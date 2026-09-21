@@ -1,4 +1,5 @@
 from django.contrib.auth import get_user_model
+from django.contrib.auth.password_validation import validate_password
 from rest_framework import serializers
 
 from .models import Friendship
@@ -11,7 +12,11 @@ class RegisterSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = User
-        fields = ["id", "username", "email", "password"]
+        fields = ["id", "username", "email", "password", "display_name"]
+
+    def validate(self, attrs):
+        validate_password(attrs["password"], User(username=attrs.get("username", ""), email=attrs.get("email", "")))
+        return attrs
 
     def create(self, validated_data):
         return User.objects.create_user(**validated_data)
@@ -60,6 +65,7 @@ class FriendshipSerializer(serializers.ModelSerializer):
             "from_user",
             "to_user",
             "status",
+            "blocked_by",
             "created_at",
         ]
         read_only_fields = [
@@ -67,6 +73,7 @@ class FriendshipSerializer(serializers.ModelSerializer):
             "from_user",
             "to_user",
             "status",
+            "blocked_by",
             "created_at",
         ]
 

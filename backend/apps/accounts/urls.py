@@ -21,6 +21,7 @@ router.register(
 
 
 urlpatterns = [
+    path("users/", views.UserSearchView.as_view()),
     path("register/", views.RegisterView.as_view()),
     path("login/", views.LoginView.as_view()),
     path("login/refresh/", TokenRefreshView.as_view()),

@@ -3,10 +3,10 @@ import { visibleSection } from "../demo/service.mjs";
 import Showcase from "./Showcase";
 import { ReportButton } from "./Reports";
 import { cosmetics } from "../demo/community.mjs";
-import { useState, useEffect, useRef } from "react";
+import { useEffect, useState, useRef } from "react";
 import { Link, useParams } from "react-router-dom";
 import { useDemo } from "../demo/context";
-import { games, price } from "../demo/model.mjs";
+import { price } from "../demo/model.mjs";
 import {
   Art,
   Avatar,
@@ -60,13 +60,16 @@ export function Author({ id }) {
 export const date = (at) =>
   new Date(at).toLocaleDateString("ru-RU", { day: "numeric", month: "short" });
 export function Game() {
+  const { games } = useDemo();
   const { slug } = useParams();
   const g = games.find((g) => g.id === slug);
   const { state, me, act } = useDemo();
   const [tab, setTab] = useState("Об игре"),
     [review, setReview] = useState(""),
     [positive, setPositive] = useState(true);
-  if (!g) return <NotFound />;
+  const { loadGame, loadReviews, notify, loading } = useDemo();
+  useEffect(() => { loadGame(slug).catch(e => notify(e.message)); loadReviews(slug).catch(e => notify(e.message)); }, [slug, g?.apiId]);
+  if (!g) return loading ? <Head title="Загружаем игру…" /> : <NotFound />;
   const owned = state.library[me?.id]?.includes(g.id),
     cart = state.cart[me?.id]?.includes(g.id),
     wished = state.wishlist[me?.id]?.includes(g.id);
@@ -136,21 +139,21 @@ export function Game() {
             <div className="panel">
               <h2>Отзывы игроков</h2>
               <div className="review-score">
-                <strong>{g.rating}%</strong>
+                <strong>{g.rating === null ? "—" : g.rating + "%"}</strong>
                 <span>
                   Положительные
                   <br />
-                  <small>Демонстрационная оценка</small>
+                  <small>Оценка игроков</small>
                 </span>
               </div>
               <ReviewList game={g.id} />
               {owned ? (
                 <form
                   className="form-stack"
-                  onSubmit={(e) => {
+                  onSubmit={async (e) => {
                     e.preventDefault();
                     if (
-                      act(
+                      await act(
                         { type: "review", game: g.id, text: review, positive },
                         "Отзыв сохранён",
                       )
@@ -262,6 +265,7 @@ export function Achievements({ owned }) {
   );
 }
 export function Collection({ kind }) {
+  const { games } = useDemo();
   const { state, me, act } = useDemo();
   const [search, setSearch] = useState(""),
     [sort, setSort] = useState("title");
@@ -417,6 +421,7 @@ export function Collection({ kind }) {
   );
 }
 export function Profile() {
+  const { games } = useDemo();
   const { id } = useParams();
   const { state, me, act } = useDemo();
   const user = state.users.find((u) => u.id === (id || me?.id));
@@ -639,8 +644,8 @@ export function Profile() {
         <Modal title="Ваш профиль" onClose={() => setEdit(false)}>
           <ProfileForm
             user={user}
-            onSave={(values) => {
-              if (act({ type: "profile", ...values }, "Профиль обновлён"))
+            onSave={async (values) => {
+              if (await act({ type: "profile", ...values }, "Профиль обновлён"))
                 setEdit(false);
             }}
           />
@@ -650,13 +655,14 @@ export function Profile() {
   );
 }
 export function ProfileForm({ user, onSave }) {
+  const { games } = useDemo();
   const [values, setValues] = useState(user);
   const [uploadError, setUploadError] = useState("");
   const field = (k, v) => setValues({ ...values, [k]: v });
   return (
     <form
       className="form-stack"
-      onSubmit={(e) => {
+      onSubmit={async (e) => {
         e.preventDefault();
         onSave(values);
       }}

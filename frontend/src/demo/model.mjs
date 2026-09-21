@@ -171,7 +171,7 @@ export const games = [
     totalAchievements: 20,
   },
 ];
-export const price = (g) => Math.round(g.price * (1 - g.discount / 100));
+export const price = (g) => g.finalPrice ?? Math.round(g.price * (1 - g.discount / 100));
 export function seed() {
   return {
     version: 4,

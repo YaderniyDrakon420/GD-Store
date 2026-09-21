@@ -2,10 +2,11 @@ import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useDemo } from "../demo/context";
 import { Art, Avatar } from "./Studio";
-import { games } from "../demo/model.mjs";
+
 import Icon from "../components/Icon";
 export default function AuthScreen({ register = false, reset = false }) {
-  const { state, act, account } = useDemo();
+  const { games } = useDemo();
+  const { account } = useDemo();
   const navigate = useNavigate();
   const [form, setForm] = useState({
       name: "",
@@ -19,7 +20,7 @@ export default function AuthScreen({ register = false, reset = false }) {
     [show, setShow] = useState(false),
     [busy, setBusy] = useState(false),
     [error, setError] = useState(""),
-    [code, setCode] = useState(""),
+    [code] = useState(""),
     [done, setDone] = useState(false);
   const field = (key, value) => {
     setForm({ ...form, [key]: value });
@@ -34,13 +35,13 @@ export default function AuthScreen({ register = false, reset = false }) {
     }
     setBusy(true);
     try {
-      const result = await account({
+      await account({
         ...form,
         mode: register ? "register" : reset ? "reset" : "login",
       });
       if (register) {
-        setCode(result.recovery);
-        setForm({ ...form, password: "", confirm: "" });
+        navigate("/profile");
+        return;
       } else if (reset) {
         setDone(true);
         setForm({ ...form, password: "", confirm: "", recovery: "" });
@@ -136,7 +137,7 @@ export default function AuthScreen({ register = false, reset = false }) {
                 ? "Выберите имя, под которым вас узнают друзья."
                 : reset
                   ? "Введите логин и сохранённый код восстановления."
-                  : "Войдите в свой локальный профиль."}
+                  : "Войдите в свой аккаунт GD Store."}
             </p>
             <form className="form-stack" onSubmit={submit}>
               {register ? (
@@ -180,7 +181,7 @@ export default function AuthScreen({ register = false, reset = false }) {
                 </>
               ) : (
                 <label>
-                  Логин или email
+                  Логин
                   <input
                     required
                     value={form.login}
@@ -265,32 +266,6 @@ export default function AuthScreen({ register = false, reset = false }) {
                 <Icon name="arrow" />
               </button>
             </form>
-            <p className="fine space">
-              Локальный режим без сервера и писем. Используйте отдельный
-              тестовый пароль. Проверочные хеши хранятся в этом браузере; это не
-              защищённая серверная авторизация.
-            </p>
-            {!register && !reset && (
-              <details className="demo-profiles">
-                <summary>Открыть готовый демопрофиль</summary>
-                <div>
-                  {state.users
-                    .filter((u) => !u.auth && !u.banned)
-                    .map((u) => (
-                      <button
-                        key={u.id}
-                        onClick={() => {
-                          if (act({ type: "switch", user: u.id }))
-                            navigate("/profile");
-                        }}
-                      >
-                        <Avatar user={u} />
-                        <span>{u.name}</span>
-                      </button>
-                    ))}
-                </div>
-              </details>
-            )}
           </>
         )}
       </section>

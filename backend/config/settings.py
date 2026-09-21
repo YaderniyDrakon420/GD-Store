@@ -49,6 +49,7 @@ INSTALLED_APPS = [
 
     # local apps
     "apps.common",
+    "apps.chat",
     "apps.accounts",
     "apps.catalog",
     "apps.store",
@@ -215,6 +216,7 @@ REST_FRAMEWORK = {
     # Нужны существующим CheckoutThrottle,
     # OrderActionThrottle и PaymentCreateThrottle.
     "DEFAULT_THROTTLE_RATES": {
+        "chat_send": "30/min",
         "checkout": os.environ.get(
             "THROTTLE_CHECKOUT_RATE",
             "10/min",

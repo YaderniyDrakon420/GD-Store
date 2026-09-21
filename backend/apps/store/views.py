@@ -81,7 +81,10 @@ class CartViewSet(viewsets.ModelViewSet):
     @action(detail=False, methods=["get"])
     def summary(self, request):
         items = list(self.get_queryset())
-        data, reasons = cart_summary(request.user.pk, items)
+        validator = CheckoutSerializer(data={"recipient_username": request.query_params.get("recipient_username", "")}, context={"request": request})
+        validator.is_valid(raise_exception=True)
+        recipient = validator.validated_data.get("recipient_username")
+        data, reasons = cart_summary(request.user.pk, items, recipient.pk if recipient else None)
         rows = CartItemSerializer(items, many=True, context=self.get_serializer_context()).data
         for row, item in zip(rows, items):
             row["unavailable_reason"] = reasons[item.pk]

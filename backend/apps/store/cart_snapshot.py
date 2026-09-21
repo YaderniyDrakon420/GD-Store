@@ -17,8 +17,8 @@ def snapshot(user_id, beneficiary_id, items):
     return {"user": str(user_id), "beneficiary": str(beneficiary_id), "cart": digest}, owned
 
 
-def cart_summary(user_id, items):
-    payload, owned = snapshot(user_id, user_id, items)
+def cart_summary(user_id, items, beneficiary_id=None):
+    payload, owned = snapshot(user_id, beneficiary_id or user_id, items)
     reasons = {i.pk: ("Игра уже в библиотеке" if i.game_id in owned else
                       "Игра недоступна" if not i.game.is_published else "") for i in items}
     return {"count": len(items),

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import { games, price } from "../demo/model.mjs";
+import { price } from "../demo/model.mjs";
 import { pickGames } from "../demo/extras.mjs";
 import { useDemo } from "../demo/context";
 import { Head, Art, GameCard, Empty, Gate, money } from "./Studio";
@@ -32,6 +32,7 @@ export function DiscoveryStrip() {
   );
 }
 export function Compare() {
+  const { games } = useDemo();
   const { state, me, act } = useDemo();
   const selected = (state.comparison[me?.id] || [])
     .map((id) => games.find((g) => g.id === id))
@@ -150,6 +151,7 @@ export function Compare() {
   );
 }
 export function Discover() {
+  const { games } = useDemo();
   const { state, me } = useDemo();
   const [mood, setMood] = useState("any"),
     [budget, setBudget] = useState(1200),

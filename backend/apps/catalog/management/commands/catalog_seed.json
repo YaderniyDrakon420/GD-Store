@@ -1,0 +1,128 @@
+[
+  {
+    "id": "orbital",
+    "title": "ORBITAL",
+    "tagline": "За пределами знакомого",
+    "genre": "Приключения",
+    "tags": [
+      "Космос",
+      "Открытый мир",
+      "Одиночная"
+    ],
+    "price": 899,
+    "discount": 35,
+    "image": "/art/orbital.png",
+    "color": "#2b7e85",
+    "rating": 96,
+    "developer": "Northstar Studio",
+    "description": "Отправьтесь к далёким кольцам Элиона. Исследуйте заброшенные станции, прокладывайте свой маршрут среди звёзд и узнайте, что осталось от первой экспедиции.",
+    "hours": 42,
+    "achievements": 12,
+    "totalAchievements": 32
+  },
+  {
+    "id": "ashen",
+    "title": "ASHEN CROWN",
+    "tagline": "У каждого королевства есть тень",
+    "genre": "RPG",
+    "tags": [
+      "Фэнтези",
+      "Souls-like",
+      "Одиночная"
+    ],
+    "price": 1299,
+    "discount": 20,
+    "image": "/art/ashen.png",
+    "color": "#9b4545",
+    "rating": 94,
+    "developer": "Ember Works",
+    "description": "Пепельное королевство ждёт нового странника. Освойте оружие, исследуйте древние соборы и решите судьбу погасшего солнца.",
+    "hours": 18,
+    "achievements": 7,
+    "totalAchievements": 40
+  },
+  {
+    "id": "velocity",
+    "title": "VELOCITY / 2099",
+    "tagline": "Город живёт после полуночи",
+    "genre": "Гонки",
+    "tags": [
+      "Киберпанк",
+      "Гонки",
+      "Мультиплеер"
+    ],
+    "price": 699,
+    "discount": 0,
+    "image": "/art/velocity.png",
+    "color": "#624295",
+    "rating": 91,
+    "developer": "Nightlane",
+    "description": "Неоновые улицы, ночной дождь и идеальная траектория. Настраивайте автомобиль и открывайте новые районы футуристического мегаполиса.",
+    "hours": 9,
+    "achievements": 3,
+    "totalAchievements": 24
+  },
+  {
+    "id": "echoes",
+    "title": "ECHOES OF ELION",
+    "tagline": "Истории далёкой планеты",
+    "genre": "Инди",
+    "tags": [
+      "Исследование",
+      "Атмосфера",
+      "Одиночная"
+    ],
+    "price": 399,
+    "discount": 50,
+    "image": "/art/orbital.png",
+    "color": "#318c83",
+    "rating": 98,
+    "developer": "Small Worlds",
+    "description": "Неспешное путешествие по следам исчезнувшей цивилизации. Слушайте планету, собирайте воспоминания и находите красоту в тишине.",
+    "hours": 0,
+    "achievements": 0,
+    "totalAchievements": 18
+  },
+  {
+    "id": "hollow",
+    "title": "HOLLOW KINGDOM",
+    "tagline": "Постройте свою легенду",
+    "genre": "Стратегии",
+    "tags": [
+      "Строительство",
+      "Фэнтези",
+      "Стратегия"
+    ],
+    "price": 799,
+    "discount": 15,
+    "image": "/art/ashen.png",
+    "color": "#945d39",
+    "rating": 89,
+    "developer": "Copper Gate",
+    "description": "Возродите город на границе забытых земель. Выбирайте союзников, управляйте ресурсами и защитите своих жителей.",
+    "hours": 0,
+    "achievements": 0,
+    "totalAchievements": 30
+  },
+  {
+    "id": "nightshift",
+    "title": "NIGHTSHIFT",
+    "tagline": "Встречаемся на старте",
+    "genre": "Экшен",
+    "tags": [
+      "Кооператив",
+      "Киберпанк",
+      "Экшен"
+    ],
+    "price": 0,
+    "discount": 0,
+    "image": "/art/velocity.png",
+    "color": "#794b9c",
+    "rating": 92,
+    "developer": "Nightlane",
+    "description": "Кооперативные задания в городе будущего. Соберите команду, выберите маршрут и заберите контракт раньше конкурентов.",
+    "hours": 0,
+    "achievements": 0,
+    "totalAchievements": 20
+  }
+]

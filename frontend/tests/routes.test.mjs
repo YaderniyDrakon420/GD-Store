@@ -4,39 +4,13 @@ import { createServer } from "vite";
 import React from "react";
 import { renderToString } from "react-dom/server";
 import { MemoryRouter } from "react-router-dom";
-import { seed } from "../src/demo/model.mjs";
-test("all main routes render without a server or API calls", async () => {
+
+test("anonymous routes render safely before API loading completes", async () => {
   const server = await createServer({
     server: { middlewareMode: true },
     appType: "custom",
     optimizeDeps: { noDiscovery: true, include: [] },
   });
-  const state = seed();
-  state.events = [
-    {
-      id: "evening",
-      host: "karim",
-      invitees: ["nova"],
-      rsvp: { nova: "invited" },
-      title: "Вечер игр",
-      game: "orbital",
-      description: "План",
-      startsAt: new Date(Date.now() + 86400000).toISOString(),
-      cancelled: false,
-    },
-  ];
-  state.collections = [
-    {
-      id: "favorites",
-      owner: "karim",
-      name: "Любимые",
-      color: "teal",
-      gameIds: ["orbital"],
-    },
-  ];
-
-  state.cart.karim = ["echoes"];
-  state.comparison.karim = ["orbital", "ashen"];
   const originalError = console.error;
   console.error = (message, ...args) => {
     if (
@@ -46,7 +20,7 @@ test("all main routes render without a server or API calls", async () => {
       return;
     originalError(message, ...args);
   };
-  globalThis.localStorage = { getItem: () => JSON.stringify(state) };
+  globalThis.localStorage = { getItem: () => null };
   try {
     const { default: App } = await server.ssrLoadModule("/src/App.jsx");
     for (const path of [

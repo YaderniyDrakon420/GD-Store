@@ -6,6 +6,7 @@ from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView
 
 urlpatterns = [
     path("admin/", admin.site.urls),
+    path("api/v1/chat/", include("apps.chat.urls")),
 
     # --- Dev 1: аккаунты, авторизация, JWT ---
     path("api/v1/auth/", include("apps.accounts.urls")),

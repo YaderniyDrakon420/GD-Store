@@ -284,24 +284,37 @@ class FriendshipViewSet(viewsets.ModelViewSet):
         detail=True,
         methods=["post"],
     )
-    def block(self, _request, pk=None):
-        del pk
-
-        friendship_id = self.get_object().pk
-
+    def block(self, request, pk=None):
+        reference = self.get_object()
         with transaction.atomic():
-            friendship = (
-                Friendship.objects
-                .select_for_update()
-                .get(pk=friendship_id)
-            )
-
+            self.lock_participants(reference)
+            friendship = Friendship.objects.select_for_update().get(pk=reference.pk)
+            if friendship.status == "blocked" and friendship.blocked_by_id != request.user.pk:
+                raise ValidationError("Нельзя изменить чужую блокировку.")
             friendship.status = "blocked"
-            friendship.save(
-                update_fields=["status"]
-            )
+            friendship.blocked_by = request.user
+            friendship.save(update_fields=["status", "blocked_by"])
+        return Response(FriendshipSerializer(friendship).data)
 
-        return Response(
-            FriendshipSerializer(friendship).data,
-            status=status.HTTP_200_OK,
-        )
+    def lock_participants(self, reference):
+        list(User.objects.select_for_update().filter(pk__in=[reference.from_user_id, reference.to_user_id]).order_by("pk"))
+
+    def perform_destroy(self, instance):
+        with transaction.atomic():
+            self.lock_participants(instance)
+            friendship = Friendship.objects.select_for_update().get(pk=instance.pk)
+            if friendship.status == "blocked" and friendship.blocked_by_id != self.request.user.pk:
+                raise ValidationError("Только автор блокировки может её снять. Для старой блокировки обратитесь к администратору.")
+            friendship.delete()
+
+
+class UserSearchView(generics.ListAPIView):
+    serializer_class = UserPublicSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_queryset(self):
+        query = self.request.query_params.get("search", "").strip()
+        if len(query) < 2:
+            return User.objects.none()
+        return User.objects.filter(is_active=True).exclude(pk=self.request.user.pk).filter(
+            Q(username__icontains=query) | Q(display_name__icontains=query)).order_by("username", "pk")
