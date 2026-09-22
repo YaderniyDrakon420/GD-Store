@@ -28,15 +28,15 @@ export function ReportButton({ user, message, compact = false }) {
         >
           <form
             className="form-stack"
-            onSubmit={(e) => {
+            onSubmit={async (e) => {
               e.preventDefault();
               if (
-                act(
+                await act(
                   {
                     type: "report-create",
                     kind: message ? "message" : "player",
                     user,
-                    message,
+                    messageId: message,
                     reason,
                     details,
                   },
@@ -156,8 +156,8 @@ export function ReportsQueue() {
                 !state.users.find((u) => u.id === r.user)?.banned && (
                   <button
                     className="btn danger"
-                    onClick={() =>
-                      act(
+                    onClick={async () =>
+                      await act(
                         { type: "admin-ban", user: r.user, reason: r.reason },
                         "Игрок заблокирован",
                       )
@@ -180,10 +180,10 @@ export function ReportsQueue() {
         <Modal title="Решение по жалобе" onClose={() => setReview(null)}>
           <form
             className="form-stack"
-            onSubmit={(e) => {
+            onSubmit={async (e) => {
               e.preventDefault();
               if (
-                act(
+                await act(
                   {
                     type: "admin-report-resolve",
                     report: review.id,

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import { price } from "../demo/model.mjs";
+import { games, price } from "../server/catalog.mjs";
 import { pickGames } from "../demo/extras.mjs";
 import { useDemo } from "../demo/context";
 import { Head, Art, GameCard, Empty, Gate, money } from "./Studio";
@@ -32,12 +32,11 @@ export function DiscoveryStrip() {
   );
 }
 export function Compare() {
-  const { games } = useDemo();
   const { state, me, act } = useDemo();
   const selected = (state.comparison[me?.id] || [])
     .map((id) => games.find((g) => g.id === id))
     .filter(Boolean);
-  const options = games.filter((g) => !selected.some((s) => s.id === g.id));
+  const options = games.filter((g) => g.available !== false && !selected.some((s) => s.id === g.id));
   const rows = [
     ["Цена", (g) => money(price(g))],
     ["Скидка", (g) => (g.discount ? "−" + g.discount + "%" : "Без скидки")],
@@ -57,7 +56,7 @@ export function Compare() {
         {!!selected.length && (
           <button
             className="btn"
-            onClick={() => act({ type: "compare-clear" })}
+            onClick={async () => await act({ type: "compare-clear" })}
           >
             Очистить сравнение
           </button>
@@ -69,8 +68,8 @@ export function Compare() {
           aria-label="Добавить игру к сравнению"
           value=""
           disabled={selected.length >= 3}
-          onChange={(e) => {
-            if (e.target.value) act({ type: "compare", game: e.target.value });
+          onChange={async (e) => {
+            if (e.target.value) await act({ type: "compare", game: e.target.value });
           }}
         >
           <option value="">＋ Выберите игру</option>
@@ -98,7 +97,7 @@ export function Compare() {
                     </Link>
                     <button
                       className="link-button"
-                      onClick={() => act({ type: "compare", game: g.id })}
+                      onClick={async () => await act({ type: "compare", game: g.id })}
                     >
                       Убрать ×
                     </button>
@@ -151,13 +150,12 @@ export function Compare() {
   );
 }
 export function Discover() {
-  const { games } = useDemo();
   const { state, me } = useDemo();
   const [mood, setMood] = useState("any"),
     [budget, setBudget] = useState(1200),
     [excludeOwned, setExcludeOwned] = useState(true),
     [picked, setPicked] = useState(null);
-  const candidates = pickGames(games, {
+  const candidates = pickGames(games.filter((g) => g.available !== false), {
     mood,
     budget,
     owned: excludeOwned ? state.library[me?.id] || [] : [],

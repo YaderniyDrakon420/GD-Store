@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { useDemo } from "../demo/context";
-import { cosmetics } from "../demo/community.mjs";
+import { cosmetics } from "../server/catalog.mjs";
 import { Head, Gate, Avatar } from "./Studio";
 import Icon from "../components/Icon";
 export default function CosmeticsShop() {
@@ -99,8 +99,8 @@ export default function CosmeticsShop() {
                   {has ? (
                     <button
                       className={"btn " + (active ? "" : "primary")}
-                      onClick={() =>
-                        act(
+                      onClick={async () =>
+                        await act(
                           {
                             type: "cosmetic-equip",
                             slot: item.type,
@@ -116,8 +116,8 @@ export default function CosmeticsShop() {
                     <button
                       className="btn"
                       disabled={(me?.points ?? 0) < item.price}
-                      onClick={() =>
-                        act(
+                      onClick={async () =>
+                        await act(
                           { type: "cosmetic-buy", item: item.id },
                           "Предмет добавлен в коллекцию",
                         )

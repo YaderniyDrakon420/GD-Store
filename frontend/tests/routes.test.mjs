@@ -4,13 +4,40 @@ import { createServer } from "vite";
 import React from "react";
 import { renderToString } from "react-dom/server";
 import { MemoryRouter } from "react-router-dom";
-
-test("anonymous routes render safely before API loading completes", async () => {
+import { seed, games } from "../src/demo/model.mjs";
+import { cosmetics } from "../src/demo/community.mjs";
+test("all main routes render from a server snapshot fixture", async () => {
   const server = await createServer({
     server: { middlewareMode: true },
     appType: "custom",
     optimizeDeps: { noDiscovery: true, include: [] },
   });
+  const state = seed();
+  state.events = [
+    {
+      id: "evening",
+      host: "karim",
+      invitees: ["nova"],
+      rsvp: { nova: "invited" },
+      title: "Вечер игр",
+      game: "orbital",
+      description: "План",
+      startsAt: new Date(Date.now() + 86400000).toISOString(),
+      cancelled: false,
+    },
+  ];
+  state.collections = [
+    {
+      id: "favorites",
+      owner: "karim",
+      name: "Любимые",
+      color: "teal",
+      gameIds: ["orbital"],
+    },
+  ];
+
+  state.cart.karim = ["echoes"];
+  state.comparison.karim = ["orbital", "ashen"];
   const originalError = console.error;
   console.error = (message, ...args) => {
     if (
@@ -20,7 +47,7 @@ test("anonymous routes render safely before API loading completes", async () => 
       return;
     originalError(message, ...args);
   };
-  globalThis.localStorage = { getItem: () => null };
+  globalThis.localStorage = { getItem: () => JSON.stringify(state) };
   try {
     const { default: App } = await server.ssrLoadModule("/src/App.jsx");
     for (const path of [
@@ -63,7 +90,7 @@ test("anonymous routes render safely before API loading completes", async () => 
         React.createElement(
           MemoryRouter,
           { initialEntries: [path] },
-          React.createElement(App),
+          React.createElement(App, { initialSnapshot: { state, games, cosmetics } }),
         ),
       );
       assert.ok(html.includes("GD"), "Route failed: " + path);

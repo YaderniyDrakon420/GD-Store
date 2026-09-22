@@ -3,7 +3,7 @@ import { Privacy, SaleDemo } from "./ServiceFeatures";
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useDemo } from "../demo/context";
-import { games } from "../demo/model.mjs";
+import { games } from "../server/catalog.mjs";
 import { Head, Avatar, Gate, Empty, money } from "./Studio";
 import { Modal, date } from "./Personal";
 export { default as Account } from "./AuthScreen";
@@ -17,27 +17,22 @@ export function Settings() {
       <Head
         eyebrow="MAKE IT YOURS"
         title="Настройки пространства"
-        text="Оформление, демопрофили и ваши локальные данные."
+        text="Оформление, аккаунт и ваши настройки."
       />
       <div className="settings-grid">
         <section className="panel">
-          <h2>Локальный профиль</h2>
+          <h2>Ваш профиль</h2>
           <p className="muted space">
-            Переключитесь на друга, чтобы принять заявку или ответить на
-            сообщение. Выбранный профиль общий для вкладок этого сайта.
+            Профиль и переписки сохраняются на сервере. Для другого аккаунта
+            используйте вход с его логином и паролем.
           </p>
           <div className="account-choices">
             {state.users
-              .filter((u) => !u.auth)
+              .filter((u) => u.id === me?.id)
               .map((u) => (
                 <button
                   key={u.id}
-                  onClick={() =>
-                    act(
-                      { type: "switch", user: u.id },
-                      "Выбран профиль " + u.name,
-                    )
-                  }
+                  onClick={() => nav("/profile")}
                 >
                   <Avatar user={u} />
                   <span>
@@ -68,8 +63,8 @@ export function Settings() {
                   type="checkbox"
                   aria-label="Компактный интерфейс"
                   checked={!!settings.compact}
-                  onChange={(e) =>
-                    act({
+                  onChange={async (e) =>
+                    await act({
                       type: "settings",
                       values: { compact: e.target.checked },
                     })
@@ -85,8 +80,8 @@ export function Settings() {
                   type="checkbox"
                   aria-label="Отключить анимации"
                   checked={!!settings.motionOff}
-                  onChange={(e) =>
-                    act({
+                  onChange={async (e) =>
+                    await act({
                       type: "settings",
                       values: { motionOff: e.target.checked },
                     })
@@ -102,28 +97,28 @@ export function Settings() {
           <NotificationSettings />
           <SaleDemo />
           <section className="panel space">
-            <h2>Данные демонстрации</h2>
+            <h2>Настройки аккаунта</h2>
             <p className="muted space">
-              Изменения сохраняются в этом браузере. Реальных аккаунтов, сетевой
-              переписки, платежей и загрузки игр нет.
+              Настройки привязаны к аккаунту. Здесь можно вернуть стандартное
+              оформление и параметры приватности.
             </p>
             <button
               className="btn danger space"
               onClick={() => setConfirm(true)}
             >
-              Сбросить демоданные
+              Сбросить настройки
             </button>
           </section>
         </div>
       </div>
       {confirm && (
         <Modal
-          title="Сбросить локальные изменения?"
+          title="Сбросить настройки аккаунта?"
           onClose={() => setConfirm(false)}
         >
           <p className="muted">
-            Будут удалены созданные здесь профили, сообщения, заявки, обсуждения
-            и демозаказы. Исходные примеры восстановятся.
+            Оформление, приватность и уведомления вернутся к стандартным значениям.
+            Библиотека, сообщения и заказы сохранятся.
           </p>
           <div className="actions space">
             <button className="btn" onClick={() => setConfirm(false)}>
@@ -131,8 +126,8 @@ export function Settings() {
             </button>
             <button
               className="btn danger"
-              onClick={() => {
-                reset();
+              onClick={async () => {
+                if (!await reset()) return;
                 setConfirm(false);
                 nav("/");
               }}
@@ -146,14 +141,15 @@ export function Settings() {
   );
 }
 export function Orders() {
-  const { state, me } = useDemo();
+  const { state, me, act } = useDemo();
+  const [confirmOrder, setConfirmOrder] = useState(null);
   const orders = state.orders.filter((o) => o.user === me?.id);
   return (
     <Gate>
       <Head
         eyebrow="ВАШИ ПОКУПКИ"
         title="История демозаказов"
-        text="Список локальных заказов. Оплата не выполнялась."
+        text="Заказы сохранены на сервере. Реальные деньги не списываются."
       />
       {orders.map((o) => (
         <section className="panel order space" key={o.id}>
@@ -163,7 +159,7 @@ export function Orders() {
               <h3>{date(o.at)}</h3>
             </div>
             <span className="pill accent">
-              {o.recipient && o.recipient !== o.user
+              {o.status !== "paid" ? ({pending: "Ожидает оплаты", cancelled: "Отменён", refunded: "Возвращён", failed: "Ошибка оплаты", expired: "Истёк"}[o.status] || o.status) : o.recipient && o.recipient !== o.user
                 ? "Подарок отправлен"
                 : "В библиотеке"}
             </span>
@@ -189,6 +185,7 @@ export function Orders() {
             <strong>{money(o.total)}</strong>
             <small className="accent">＋{o.pointsEarned || 0} демобаллов</small>
           </div>
+          {["paid", "pending"].includes(o.status) && <button className="btn space" onClick={() => setConfirmOrder(o)}>{o.status === "paid" ? "Вернуть учебную покупку" : "Отменить заказ"}</button>}
         </section>
       ))}
       {!orders.length && (
@@ -197,6 +194,10 @@ export function Orders() {
           text="Добавьте игру в корзину и оформите демозаказ."
         />
       )}
+      {confirmOrder && <Modal title="Подтвердить действие с заказом?" onClose={() => setConfirmOrder(null)}>
+        <p className="muted">{confirmOrder.status === "paid" ? "Игры этого заказа будут убраны из библиотеки получателя. Учебные средства вернутся в кошелёк, если покупка оплачена из него; начисленные баллы будут отменены." : "Заказ будет отменён."}</p>
+        <div className="actions space"><button className="btn" onClick={() => setConfirmOrder(null)}>Назад</button><button className="btn danger" onClick={async () => { if (await act({ type: confirmOrder.status === "paid" ? "order-refund" : "order-cancel", order: confirmOrder.id }, "Заказ обновлён")) setConfirmOrder(null); }}>Подтвердить</button></div>
+      </Modal>}
     </Gate>
   );
 }

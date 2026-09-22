@@ -39,6 +39,9 @@ class CreatePaymentView(CreateAPIView):
     def create(self, request, *args, **kwargs):
         del args, kwargs
 
+        from apps.studio.commerce import require_test_mode
+        require_test_mode()
+
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
 
@@ -82,6 +85,7 @@ class CreatePaymentView(CreateAPIView):
                 order=order,
                 defaults={
                     "amount": order.total,
+                    "provider": "educational",
                 },
             )
 
@@ -139,12 +143,10 @@ class CreatePaymentView(CreateAPIView):
 
         data = PaymentSerializer(payment).data
 
-        # Заглушка до подключения настоящего Stripe/LiqPay.
-        data["checkout_url"] = (
-            f"https://pay.example.com/"
-            f"{payment.provider}/"
-            f"{payment.provider_payment_id}"
-        )
+        # This endpoint records a legacy test attempt; the storefront uses the
+        # signed studio checkout command. Never redirect to a fictitious provider.
+        data["checkout_url"] = None
+        data["test_mode"] = True
 
         return Response(
             data,

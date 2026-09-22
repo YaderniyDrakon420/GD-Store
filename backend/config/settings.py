@@ -14,7 +14,7 @@ load_dotenv(BASE_DIR / ".env")
 
 SECRET_KEY = os.environ.get(
     "DJANGO_SECRET_KEY",
-    "dev-secret-change-me",
+    "dev-only-secret-change-me-before-deployment-2026",
 )
 
 DEBUG = os.environ.get(
@@ -26,7 +26,7 @@ ALLOWED_HOSTS = [
     host.strip()
     for host in os.environ.get(
         "DJANGO_ALLOWED_HOSTS",
-        "*",
+        "localhost,127.0.0.1,[::1]",
     ).split(",")
     if host.strip()
 ]
@@ -56,6 +56,7 @@ INSTALLED_APPS = [
     "apps.library",
     "apps.reviews",
     "apps.payments",
+    "apps.studio",
 ]
 
 
@@ -144,6 +145,18 @@ DATABASES = {
 }
 
 
+# New installations use SQLite. Existing .env files with SQL Server connection
+# fields keep their database even if they predate the DB_ENGINE setting.
+DB_ENGINE = os.environ.get("DB_ENGINE") or (
+    "mssql" if any(os.environ.get(key) for key in ("DB_HOST", "DB_USER", "DB_NAME")) else "sqlite"
+)
+if DB_ENGINE == "sqlite":
+    DATABASES = {"default": {
+        "ENGINE": "django.db.backends.sqlite3",
+        "NAME": os.environ.get("SQLITE_PATH", str(BASE_DIR / "db.sqlite3")),
+        "OPTIONS": {"timeout": 30},
+    }}
+
 AUTH_PASSWORD_VALIDATORS = [
     {
         "NAME": (
@@ -193,6 +206,7 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": (
         "rest_framework_simplejwt.authentication.JWTAuthentication",
+        "rest_framework.authentication.SessionAuthentication",
     ),
 
     "DEFAULT_PERMISSION_CLASSES": (
@@ -234,6 +248,7 @@ REST_FRAMEWORK = {
 
 
 SIMPLE_JWT = {
+    "CHECK_REVOKE_TOKEN": True,
     "ACCESS_TOKEN_LIFETIME": timedelta(minutes=30),
     "REFRESH_TOKEN_LIFETIME": timedelta(days=7),
     "ROTATE_REFRESH_TOKENS": True,
@@ -262,3 +277,18 @@ SPECTACULAR_SETTINGS = {
     "DESCRIPTION": "Steam-like store backend",
     "VERSION": "1.0.0",
 }
+
+# Never accepts real funds. Disabled unless explicitly enabled by the operator.
+PAYMENT_TEST_MODE = os.environ.get("PAYMENT_TEST_MODE", "0") == "1"
+PRIVATE_UPLOAD_ROOT = Path(os.environ.get("PRIVATE_UPLOAD_ROOT", str(BASE_DIR / "private_uploads")))
+MAX_WORKSHOP_UPLOAD_BYTES = 10 * 1024 * 1024
+DATA_UPLOAD_MAX_MEMORY_SIZE = 2 * 1024 * 1024
+SESSION_COOKIE_HTTPONLY = True
+SESSION_COOKIE_SAMESITE = "Lax"
+SESSION_COOKIE_SECURE = not DEBUG
+CSRF_COOKIE_SECURE = not DEBUG
+CSRF_TRUSTED_ORIGINS = [x.strip() for x in os.environ.get("CSRF_TRUSTED_ORIGINS", "").split(",") if x.strip()]
+
+if not DEBUG and SECRET_KEY == "dev-only-secret-change-me-before-deployment-2026":
+    from django.core.exceptions import ImproperlyConfigured
+    raise ImproperlyConfigured("Set DJANGO_SECRET_KEY before disabling DEBUG.")

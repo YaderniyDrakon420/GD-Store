@@ -8,7 +8,7 @@ import {
   useNavigate,
 } from "react-router-dom";
 import { useDemo } from "../demo/context";
-import { games } from "../demo/model.mjs";
+import { games } from "../server/catalog.mjs";
 import { Art, Avatar, Empty, Gate, Head, NotFound } from "./Studio";
 import { Modal, Author, date } from "./Personal";
 import Icon from "../components/Icon";
@@ -119,8 +119,8 @@ export function Friends() {
                     <button
                       className="contact-action"
                       aria-label={"Добавить " + u.name}
-                      onClick={() =>
-                        act(
+                      onClick={async () =>
+                        await act(
                           { type: "request", user: u.id },
                           "Заявка отправлена",
                         )
@@ -132,8 +132,8 @@ export function Friends() {
                     <div className="request-actions">
                       {f.to === me?.id ? (
                         <button
-                          onClick={() =>
-                            act(
+                          onClick={async () =>
+                            await act(
                               { type: "accept", friend: f.id },
                               "Теперь вы друзья",
                             )
@@ -146,7 +146,7 @@ export function Friends() {
                       )}
                       <button
                         aria-label="Отклонить или отменить заявку"
-                        onClick={() => act({ type: "unfriend", friend: f.id })}
+                        onClick={async () => await act({ type: "unfriend", friend: f.id })}
                       >
                         ×
                       </button>
@@ -154,8 +154,8 @@ export function Friends() {
                   ) : f.status === "blocked" && f.blockedBy === me?.id ? (
                     <button
                       className="contact-action"
-                      onClick={() =>
-                        act(
+                      onClick={async () =>
+                        await act(
                           { type: "unfriend", friend: f.id },
                           "Блокировка снята",
                         )
@@ -195,8 +195,8 @@ export function Friends() {
                   <div className="actions">
                     <button
                       className="link-button"
-                      onClick={() =>
-                        act(
+                      onClick={async () =>
+                        await act(
                           { type: "unfriend", friend: relations(peer).id },
                           "Удалён из друзей",
                         )
@@ -206,8 +206,8 @@ export function Friends() {
                     </button>
                     <button
                       className="link-button"
-                      onClick={() =>
-                        act(
+                      onClick={async () =>
+                        await act(
                           { type: "block", user: peer.id },
                           "Пользователь заблокирован",
                         )
@@ -226,7 +226,7 @@ export function Friends() {
                     aria-label="История переписки"
                   >
                     <p className="chat-date">
-                      Локальная переписка · видна только в этом браузере
+                      Личная переписка · доступна участникам диалога
                     </p>
                     {messages.map((m) => (
                       <div
@@ -257,9 +257,9 @@ export function Friends() {
                   </div>
                   <form
                     className="message-form"
-                    onSubmit={(e) => {
+                    onSubmit={async (e) => {
                       e.preventDefault();
-                      if (act({ type: "message", user: peer.id, text: draft }))
+                      if (await act({ type: "message", user: peer.id, text: draft }))
                         setDraft("");
                     }}
                   >
@@ -387,8 +387,8 @@ export function Community() {
               {topic.author === me?.id && (
                 <button
                   className="link-button"
-                  onClick={() => {
-                    act({ type: "delete-topic", topic: id });
+                  onClick={async () => {
+                    await act({ type: "delete-topic", topic: id });
                     nav("/community");
                   }}
                 >
@@ -411,10 +411,10 @@ export function Community() {
           <Gate>
             <form
               className="panel form-stack space"
-              onSubmit={(e) => {
+              onSubmit={async (e) => {
                 e.preventDefault();
                 if (
-                  act(
+                  await act(
                     { type: "reply", topic: id, text: reply },
                     "Ответ добавлен",
                   )
@@ -504,9 +504,9 @@ export function Community() {
         >
           <TopicForm
             initial={topic}
-            onSave={(v) => {
+            onSave={async (v) => {
               if (
-                act(
+                await act(
                   { type: "edit-topic", topic: id, ...v },
                   "Изменения сохранены",
                 )
@@ -519,10 +519,10 @@ export function Community() {
       {create && (
         <Modal title="Новое обсуждение" onClose={() => setCreate(false)}>
           <TopicForm
-            onSave={(v) => {
+            onSave={async (v) => {
               const newId = crypto.randomUUID();
               if (
-                act({ type: "topic", id: newId, ...v }, "Обсуждение создано")
+                await act({ type: "topic", id: newId, ...v }, "Обсуждение создано")
               ) {
                 setCreate(false);
                 nav("/community/" + newId);
@@ -569,7 +569,7 @@ function TopicForm({ onSave, initial }) {
           onChange={(e) => setBody(e.target.value)}
         />
       </label>
-      <button className="btn primary">Опубликовать локально</button>
+      <button className="btn primary">Опубликовать</button>
     </form>
   );
 }
@@ -631,12 +631,12 @@ export function Workshop() {
                 <p>{item.description}</p>
                 {item.fileName && (
                   <p className="muted">
-                    Выбранный файл: {item.fileName}. Сохранено только имя файла.
+                    Файл: {item.fileName} · {Math.ceil((item.fileSize || 0) / 1024)} КБ
                   </p>
                 )}
                 <p className="fine">
-                  Локальная карточка концепта. Загрузка на сервер, установка и
-                  скачивание модов не подключены.
+                  Работа хранится на сервере. Скачайте архив и установите его
+                  по инструкции автора.
                 </p>
               </div>
             </div>
@@ -653,8 +653,8 @@ export function Workshop() {
                 className={
                   "btn " + (subscribed.includes(item.id) ? "" : "primary")
                 }
-                onClick={() =>
-                  act(
+                onClick={async () =>
+                  await act(
                     { type: "subscribe", mod: item.id },
                     subscribed.includes(item.id)
                       ? "Подписка отменена"
@@ -667,8 +667,9 @@ export function Workshop() {
                   : "＋ Подписаться"}
               </button>
               <p className="fine">
-                {item.subscribers} подписчиков в демоданных
+                {item.subscribers} подписчиков
               </p>
+              {me && item.fileName && <a className="btn" href={"/api/v1/studio/mods/" + item.id + "/download/"}>Скачать ZIP</a>}
               {item.author === me?.id && (
                 <div className="actions">
                   <button className="btn" onClick={() => setEditing(true)}>
@@ -676,9 +677,8 @@ export function Workshop() {
                   </button>
                   <button
                     className="btn danger"
-                    onClick={() => {
-                      act({ type: "delete-mod", mod: id }, "Работа удалена");
-                      nav("/workshop");
+                    onClick={async () => {
+                      if (await act({ type: "delete-mod", mod: id }, "Работа удалена")) nav("/workshop");
                     }}
                   >
                     Удалить
@@ -741,8 +741,8 @@ export function Workshop() {
                         "chip " + (subscribed.includes(m.id) ? "active" : "")
                       }
                       aria-label={"Подписка: " + m.title}
-                      onClick={() =>
-                        act(
+                      onClick={async () =>
+                        await act(
                           { type: "subscribe", mod: m.id },
                           subscribed.includes(m.id)
                             ? "Подписка отменена"
@@ -771,9 +771,9 @@ export function Workshop() {
         <Modal title="Редактировать работу" onClose={() => setEditing(false)}>
           <ModForm
             initial={item}
-            onSave={(v) => {
+            onSave={async (v) => {
               if (
-                act({ ...v, type: "edit-mod", mod: id }, "Изменения сохранены")
+                await act({ ...v, type: "edit-mod", mod: id }, "Изменения сохранены")
               )
                 setEditing(false);
             }}
@@ -783,10 +783,10 @@ export function Workshop() {
       {create && (
         <Modal title="Добавить работу" onClose={() => setCreate(false)}>
           <ModForm
-            onSave={(v) => {
+            onSave={async (v) => {
               const newId = crypto.randomUUID();
               if (
-                act(
+                await act(
                   { type: "mod", id: newId, ...v },
                   "Карточка работы сохранена",
                 )
@@ -802,6 +802,10 @@ export function Workshop() {
   );
 }
 function ModForm({ onSave, initial }) {
+  const { uploadFile, notify } = useDemo();
+  const [file, setFile] = useState(null);
+  const [uploaded, setUploaded] = useState(null);
+  const [busy, setBusy] = useState(false);
   const [values, setValues] = useState(
     initial || {
       title: "",
@@ -816,9 +820,19 @@ function ModForm({ onSave, initial }) {
   return (
     <form
       className="form-stack"
-      onSubmit={(e) => {
+      onSubmit={async (e) => {
         e.preventDefault();
-        onSave(values);
+        if (busy) return;
+        setBusy(true);
+        try {
+          let info = uploaded;
+          if (file && !info) {
+            info = await uploadFile(file);
+            setUploaded(info);
+          }
+          await onSave({ ...values, upload: info?.id });
+        } catch (e) { notify(e.message); }
+        finally { setBusy(false); }
       }}
     >
       <label>
@@ -867,18 +881,18 @@ function ModForm({ onSave, initial }) {
         />
       </label>
       <label>
-        ZIP-файл (необязательно)
+        ZIP-файл {initial ? "(для замены)" : "(до 10 МБ)"}
         <input
           type="file"
           accept=".zip"
-          onChange={(e) => set("fileName", e.target.files?.[0]?.name || "")}
+          required={!initial}
+          onChange={(e) => { setFile(e.target.files?.[0] || null); setUploaded(null); }}
         />
       </label>
       <p className="fine">
-        Для демонстрации сохраняется только название файла. Сам файл не
-        загружается и не хранится.
+        Архив сохраняется на сервере. Его смогут скачать вошедшие пользователи.
       </p>
-      <button className="btn primary">Создать локальную карточку</button>
+      <button className="btn primary" disabled={busy}>{busy ? "Загружаем…" : "Сохранить работу"}</button>
     </form>
   );
 }

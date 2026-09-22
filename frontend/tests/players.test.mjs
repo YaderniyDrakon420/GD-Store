@@ -10,7 +10,7 @@ const post = {
   game: "orbital",
   language: "Русский",
   capacity: 2,
-  startsAt: "2026-09-10T18:00:00Z",
+  startsAt: new Date(Date.now() + 86400000).toISOString(),
 };
 test("team capacity, duplicate joins and leaving are enforced", () => {
   let s = run(seed(), post);

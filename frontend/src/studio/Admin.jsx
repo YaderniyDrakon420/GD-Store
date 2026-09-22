@@ -18,7 +18,7 @@ export default function Admin() {
     return (
       <Empty
         title="Только для администратора"
-        text="В деморежиме панель доступна профилю Karim. Его можно выбрать в настройках."
+        text="Войдите в аккаунт с правами администратора."
         link="/settings"
         label="Выбрать профиль"
       />
@@ -29,7 +29,7 @@ export default function Admin() {
   return (
     <>
       <Head
-        eyebrow="GD CONTROL / LOCAL DEMO"
+        eyebrow="GD CONTROL"
         title="Центр управления"
         text="Порядок в сообществе начинается с понятных правил."
       >
@@ -50,7 +50,7 @@ export default function Admin() {
             "shield",
           ],
           [state.topics.length + state.mods.length, "Публикаций", "globe"],
-          [state.orders.length, "Демозаказов", "cart"],
+          [state.adminStats?.orders ?? state.orders.length, "Демозаказов", "cart"],
         ].map(([value, label, icon]) => (
           <div key={label}>
             <Icon name={icon} />
@@ -62,8 +62,8 @@ export default function Admin() {
       <div className="admin-notice">
         <Icon name="shield" />
         <p>
-          Локальная панель для демонстрации. Роли и блокировки хранятся в
-          браузере; настоящую защиту прав должен обеспечивать сервер.
+          Здесь можно рассматривать жалобы, модерировать публикации и
+          управлять доступом пользователей.
         </p>
       </div>
       <div className="tabs">
@@ -112,7 +112,7 @@ export default function Admin() {
                 <p className="muted">
                   {u.banned ? u.banReason : "Доступ активен"}
                 </p>
-                {u.id !== me.id && u.id !== "karim" && !u.banned && (
+                {me.canManageRoles && u.id !== me.id && !u.banned && (
                   <button className="btn" onClick={() => setRoleTarget(u)}>
                     {u.role === "admin" ? "Снять права" : "Назначить админом"}
                   </button>
@@ -121,8 +121,8 @@ export default function Admin() {
                   (u.banned ? (
                     <button
                       className="btn"
-                      onClick={() =>
-                        act(
+                      onClick={async () =>
+                        await act(
                           { type: "admin-unban", user: u.id },
                           "Блокировка снята",
                         )
@@ -171,8 +171,8 @@ export default function Admin() {
                   <div className="actions">
                     <button
                       className="btn"
-                      onClick={() =>
-                        act(
+                      onClick={async () =>
+                        await act(
                           {
                             type: "admin-moderate",
                             collection,
@@ -188,8 +188,8 @@ export default function Admin() {
                     {collection === "topics" && (
                       <button
                         className="btn"
-                        onClick={() =>
-                          act(
+                        onClick={async () =>
+                          await act(
                             {
                               type: "admin-moderate",
                               collection,
@@ -226,9 +226,9 @@ export default function Admin() {
         <div className="announcement-grid">
           <form
             className="panel form-stack"
-            onSubmit={(e) => {
+            onSubmit={async (e) => {
               e.preventDefault();
-              act(
+              await act(
                 { type: "admin-announcement", text: announcement, enabled },
                 "Объявление сохранено",
               );
@@ -308,9 +308,9 @@ export default function Admin() {
             </button>
             <button
               className="btn primary"
-              onClick={() => {
+              onClick={async () => {
                 if (
-                  act(
+                  await act(
                     {
                       type: "admin-role",
                       user: roleTarget.id,
@@ -334,10 +334,10 @@ export default function Admin() {
         >
           <form
             className="form-stack"
-            onSubmit={(e) => {
+            onSubmit={async (e) => {
               e.preventDefault();
               if (
-                act(
+                await act(
                   { type: "admin-ban", user: target.id, reason },
                   "Пользователь заблокирован",
                 )

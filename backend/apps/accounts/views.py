@@ -22,7 +22,18 @@ from .serializers import (
 User = get_user_model()
 
 
-class RegisterView(generics.CreateAPIView):
+class SerializedAccountWrites:
+    """Legacy endpoints share the same write ordering as the storefront API."""
+    def dispatch(self, request, *args, **kwargs):
+        if request.method in permissions.SAFE_METHODS:
+            return super().dispatch(request, *args, **kwargs)
+        from apps.studio.common import lock_mutations
+        with transaction.atomic():
+            lock_mutations()
+            return super().dispatch(request, *args, **kwargs)
+
+
+class RegisterView(SerializedAccountWrites, generics.CreateAPIView):
     queryset = User.objects.all()
     serializer_class = RegisterSerializer
     permission_classes = [permissions.AllowAny]
@@ -46,7 +57,7 @@ class UserPublicProfileView(generics.RetrieveAPIView):
     permission_classes = [permissions.AllowAny]
 
 
-class FriendshipViewSet(viewsets.ModelViewSet):
+class FriendshipViewSet(SerializedAccountWrites, viewsets.ModelViewSet):
     permission_classes = [
         permissions.IsAuthenticated,
         IsFriendshipParticipant,
@@ -238,6 +249,13 @@ class FriendshipViewSet(viewsets.ModelViewSet):
                 raise ValidationError(
                     "Можно принять только ожидающую заявку."
                 )
+
+            if not friendship.from_user.is_active or Friendship.objects.filter(
+                Q(from_user=friendship.from_user, to_user=friendship.to_user)
+                | Q(from_user=friendship.to_user, to_user=friendship.from_user),
+                status="blocked",
+            ).exists():
+                raise ValidationError("Заявка недоступна.")
 
             friendship.status = "accepted"
             friendship.save(

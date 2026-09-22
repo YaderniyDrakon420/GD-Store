@@ -1,11 +1,10 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useDemo } from "../demo/context";
-import { Art, Avatar } from "./Studio";
-
+import { Art } from "./Studio";
+import { games } from "../server/catalog.mjs";
 import Icon from "../components/Icon";
 export default function AuthScreen({ register = false, reset = false }) {
-  const { games } = useDemo();
   const { account } = useDemo();
   const navigate = useNavigate();
   const [form, setForm] = useState({
@@ -20,7 +19,7 @@ export default function AuthScreen({ register = false, reset = false }) {
     [show, setShow] = useState(false),
     [busy, setBusy] = useState(false),
     [error, setError] = useState(""),
-    [code] = useState(""),
+    [code, setCode] = useState(""),
     [done, setDone] = useState(false);
   const field = (key, value) => {
     setForm({ ...form, [key]: value });
@@ -35,13 +34,13 @@ export default function AuthScreen({ register = false, reset = false }) {
     }
     setBusy(true);
     try {
-      await account({
+      const result = await account({
         ...form,
         mode: register ? "register" : reset ? "reset" : "login",
       });
       if (register) {
-        navigate("/profile");
-        return;
+        setCode(result.recovery);
+        setForm({ ...form, password: "", confirm: "" });
       } else if (reset) {
         setDone(true);
         setForm({ ...form, password: "", confirm: "", recovery: "" });
@@ -97,12 +96,12 @@ export default function AuthScreen({ register = false, reset = false }) {
             <h2>Профиль готов</h2>
             <p>
               Сохраните код восстановления. Он понадобится, если вы забудете
-              локальный пароль.
+              пароль.
             </p>
             <code>{code}</code>
             <p className="fine">
-              Код показан один раз. Письмо не отправляется: это локальная
-              демонстрация.
+              Код показан один раз. Сохраните его отдельно: восстановление
+              по email в этом учебном магазине не используется.
             </p>
             <button
               className="btn primary"
@@ -115,7 +114,7 @@ export default function AuthScreen({ register = false, reset = false }) {
           <div className="recovery-success">
             <Icon name="check" size={38} />
             <h2>Пароль обновлён</h2>
-            <p>Войдите с новым локальным паролем.</p>
+            <p>Войдите с новым паролем.</p>
             <Link className="btn primary" to="/login">
               Перейти ко входу
             </Link>
@@ -137,7 +136,7 @@ export default function AuthScreen({ register = false, reset = false }) {
                 ? "Выберите имя, под которым вас узнают друзья."
                 : reset
                   ? "Введите логин и сохранённый код восстановления."
-                  : "Войдите в свой аккаунт GD Store."}
+                  : "Войдите в свой аккаунт."}
             </p>
             <form className="form-stack" onSubmit={submit}>
               {register ? (
@@ -181,7 +180,7 @@ export default function AuthScreen({ register = false, reset = false }) {
                 </>
               ) : (
                 <label>
-                  Логин
+                  Логин или email
                   <input
                     required
                     value={form.login}
@@ -266,6 +265,10 @@ export default function AuthScreen({ register = false, reset = false }) {
                 <Icon name="arrow" />
               </button>
             </form>
+            <p className="fine space">
+              Вход выполняется через сервер. Сохраните код восстановления,
+              который получите при регистрации.
+            </p>
           </>
         )}
       </section>

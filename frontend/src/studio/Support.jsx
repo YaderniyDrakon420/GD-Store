@@ -83,8 +83,8 @@ export default function Support() {
                   <select
                     aria-label="Статус обращения"
                     value={ticket.status}
-                    onChange={(e) =>
-                      act(
+                    onChange={async (e) =>
+                      await act(
                         {
                           type: "ticket-status",
                           ticket: ticket.id,
@@ -114,10 +114,10 @@ export default function Support() {
               {ticket.status !== "resolved" ? (
                 <form
                   className="form-stack space"
-                  onSubmit={(e) => {
+                  onSubmit={async (e) => {
                     e.preventDefault();
                     if (
-                      act(
+                      await act(
                         { type: "ticket-reply", ticket: ticket.id, text },
                         "Ответ добавлен",
                       )
@@ -153,10 +153,10 @@ export default function Support() {
         <Modal title="Новое обращение" onClose={() => setCreate(false)}>
           <form
             className="form-stack"
-            onSubmit={(e) => {
+            onSubmit={async (e) => {
               e.preventDefault();
               if (
-                act({ type: "ticket-create", ...form }, "Обращение создано")
+                await act({ type: "ticket-create", ...form }, "Обращение создано")
               ) {
                 setCreate(false);
                 setForm({ title: "", category: "Покупка", text: "" });

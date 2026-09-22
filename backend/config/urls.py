@@ -5,6 +5,7 @@ from django.conf.urls.static import static
 from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView
 
 urlpatterns = [
+    path("api/v1/studio/", include("apps.studio.urls")),
     path("admin/", admin.site.urls),
     path("api/v1/chat/", include("apps.chat.urls")),
 

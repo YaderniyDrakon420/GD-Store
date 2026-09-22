@@ -5,7 +5,7 @@ import {
   ProfileMenu,
 } from "./Navigation";
 import { SaleWatcher } from "./ServiceFeatures";
-import { cosmetics } from "../demo/community.mjs";
+import { cosmetics } from "../server/catalog.mjs";
 import { GiftArrival } from "./Gifts";
 import { DiscoveryStrip } from "./Discovery";
 import { useState } from "react";
@@ -18,7 +18,7 @@ import {
   useSearchParams,
 } from "react-router-dom";
 import { useDemo } from "../demo/context";
-import { price } from "../demo/model.mjs";
+import { games, price } from "../server/catalog.mjs";
 import Icon from "../components/Icon";
 export const money = (n) =>
   n === 0 ? "Бесплатно" : new Intl.NumberFormat("ru-RU").format(n) + " ₴";
@@ -45,9 +45,10 @@ export function Avatar({ user, large = false }) {
   );
 }
 export function Art({ game, className = "" }) {
+  if (!game) return <div className={"art " + className}><span className="art-shade" /></div>;
   return (
-    <div className={"art " + className} style={{ backgroundColor: game?.color || "#234745" }}>
-      {game?.image && <img src={game.image} alt="" />}
+    <div className={"art " + className} style={{ backgroundColor: game.color }}>
+      <img src={game.image} alt="" />
       <span className="art-shade" />
     </div>
   );
@@ -77,7 +78,7 @@ export function Gate({ children }) {
         title="Профиль заблокирован"
         text={me.banReason}
         link="/settings"
-        label="Переключить демопрофиль"
+        label="Открыть настройки"
       />
     );
   return me ? (
@@ -261,9 +262,9 @@ export function Shell() {
         </header>
         <div className="demo-bar">
           <span>
-            <i /> GD Store · каталог и аккаунты на сервере
+            <i /> {state.paymentTestMode ? "Учебный режим · без реальных покупок" : "Покупки выключены на сервере"}
           </span>
-          <Link to="/settings">Настройки ↗</Link>
+          <Link to="/settings">Настройки профиля ↗</Link>
         </div>
         {state.announcement.enabled && (
           <div className="site-announcement live-announcement">
@@ -279,18 +280,17 @@ export function Shell() {
         )}
         <SectionNavigation group={group} path={pathname} />
         <main id="main">
-          <Outlet />
-
-
+          <Outlet key={["/login", "/register", "/forgot-password"].includes(pathname) ? "auth" : state.active || "guest"} />
+          <SaleWatcher />
+          <GiftArrival />
         </main>
         <footer>
           <span>GD STORE / PLAY YOUR WAY</span>
-          <span>GD Store · игры и общение.</span>
+          <span>Независимый дизайн. Вымышленные игры для демонстрации.</span>
           <button
             className="link-button"
-            onClick={() => {
-              act({ type: "switch", user: null });
-              nav("/login");
+            onClick={async () => {
+              if (await act({ type: "switch", user: null })) nav("/login");
             }}
           >
             Сменить аккаунт
@@ -317,8 +317,8 @@ export function GameCard({ game }) {
         aria-label={
           (wished ? "Убрать из" : "Добавить в") + " желаемое: " + game.title
         }
-        onClick={() =>
-          act(
+        onClick={async () =>
+          await act(
             { type: "wishlist", game: game.id },
             wished ? "Удалено из желаемого" : "Добавлено в желаемое",
           )
@@ -333,14 +333,14 @@ export function GameCard({ game }) {
         }
         aria-label={"Сравнить " + game.title}
         aria-pressed={!!state.comparison[me?.id]?.includes(game.id)}
-        onClick={() => act({ type: "compare", game: game.id })}
+        onClick={async () => await act({ type: "compare", game: game.id })}
       >
         <Icon name="compare" size={17} />
       </button>
       <div className="card-info">
         <p className="micro">
           {game.genre}
-          {game.rating !== null && <span className="rating">● {game.rating}%</span>}
+          <span className="rating">● {game.rating}%</span>
         </p>
         <Link to={"/game/" + game.id}>
           <h3>{game.title}</h3>
@@ -357,17 +357,17 @@ export function GameCard({ game }) {
   );
 }
 export function Store() {
-  const { games: allGames, loading, error } = useDemo();
-  const games = allGames.filter(g => g.storeVisible);
   const [params, setParams] = useSearchParams();
   const search = params.get("search") || "";
   const [genre, setGenre] = useState("Все игры"),
     [sort, setSort] = useState("popular"),
     [sale, setSale] = useState(false);
-  const hero = games[0];
+  const featured = games.filter((g) => g.available !== false);
+  const hero = featured[0];
   const found = games
     .filter(
       (g) =>
+        g.available !== false &&
         (genre === "Все игры" || g.genre === genre) &&
         (!sale || g.discount > 0) &&
         (g.title + " " + g.tags.join(" "))
@@ -398,7 +398,7 @@ export function Store() {
               <span className="pill">
                 <i /> В ФОКУСЕ
               </span>
-              <p className="hero-kicker">{hero.developer || "GD STORE SELECTION"}</p>
+              <p className="hero-kicker">NORTHSTAR STUDIO PRESENTS</p>
               <h2>{hero.title}</h2>
               <p>
                 Там, где заканчивается карта,
@@ -410,7 +410,7 @@ export function Store() {
                   Исследовать игру <Icon name="arrow" size={18} />
                 </span>
                 <div>
-                  {hero.discount > 0 && <span className="discount">−{hero.discount}%</span>}
+                  <span className="discount">−{hero.discount}%</span>
                   <strong>{money(price(hero))}</strong>
                 </div>
               </div>
@@ -420,16 +420,16 @@ export function Store() {
             </div>
           </Link>
           <div className="feature-side">
-            <Link className="mini-feature" to={"/game/" + (games[1] || hero).id}>
-              <Art game={games[1] || hero} />
+            {featured[1] && <Link className="mini-feature" to={"/game/" + featured[1].id}>
+              <Art game={featured[1]} />
               <div>
                 <span className="micro">ВЫБОР СООБЩЕСТВА</span>
                 <h2>
-                  {(games[1] || hero).title}
+                  {featured[1].title}
                 </h2>
                 <span className="circle-arrow">↗</span>
               </div>
-            </Link>
+            </Link>}
             <Link className="community-promo" to="/friends">
               <span className="small-orbit">
                 <Icon name="users" size={27} />
@@ -505,8 +505,8 @@ export function Store() {
         </div>
         {!found.length && (
           <Empty
-            title={loading ? "Загружаем каталог…" : error ? "Каталог недоступен" : "Ничего не нашлось"}
-            text={error || "Попробуйте другой запрос или добавьте игры через админку."}
+            title="Ничего не нашлось"
+            text="Попробуйте другой запрос или категорию."
           />
         )}
       </section>

@@ -21,8 +21,8 @@ export default function Notifications() {
         <button
           className="btn"
           disabled={!unread}
-          onClick={() =>
-            act({ type: "notifications-read-all" }, "Все уведомления прочитаны")
+          onClick={async () =>
+            await act({ type: "notifications-read-all" }, "Все уведомления прочитаны")
           }
         >
           Прочитать всё
@@ -70,8 +70,8 @@ export default function Notifications() {
             </span>
             <button
               className="notification-content"
-              onClick={() => {
-                if (act({ type: "notification-read", notification: n.id }))
+              onClick={async () => {
+                if (await act({ type: "notification-read", notification: n.id }))
                   navigate(n.url);
               }}
             >
@@ -89,8 +89,8 @@ export default function Notifications() {
               <button
                 className="icon-btn"
                 aria-label={"Отметить прочитанным: " + n.title}
-                onClick={() =>
-                  act({ type: "notification-read", notification: n.id })
+                onClick={async () =>
+                  await act({ type: "notification-read", notification: n.id })
                 }
               >
                 <Icon name="check" size={17} />

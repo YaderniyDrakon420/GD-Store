@@ -11,6 +11,7 @@ from rest_framework.throttling import UserRateThrottle
 from rest_framework.views import APIView
 from apps.accounts.models import Friendship
 from apps.accounts.serializers import UserPublicSerializer
+from apps.accounts.views import SerializedAccountWrites
 from .models import Conversation, Message
 
 User = get_user_model()
@@ -60,7 +61,7 @@ class ConversationSerializer(serializers.ModelSerializer):
         return MessageSerializer(message).data if message else None
 
 
-class ConversationList(generics.ListAPIView):
+class ConversationList(SerializedAccountWrites, generics.ListAPIView):
     permission_classes = [permissions.IsAuthenticated]
     serializer_class = ConversationSerializer
 
@@ -88,7 +89,7 @@ class MessagePagination(CursorPagination):
     ordering = "-id"
 
 
-class MessageList(generics.ListAPIView):
+class MessageList(SerializedAccountWrites, generics.ListAPIView):
     permission_classes = [permissions.IsAuthenticated]
     serializer_class = MessageSerializer
     pagination_class = MessagePagination
@@ -129,7 +130,7 @@ class MessageList(generics.ListAPIView):
         return Response(MessageSerializer(message).data, status=201 if created else 200)
 
 
-class MarkRead(APIView):
+class MarkRead(SerializedAccountWrites, APIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def post(self, request, pk):

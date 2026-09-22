@@ -1,1 +1,2 @@
-export { ApiProvider as DemoProvider, useApi as useDemo } from "../api/context";
+// Compatibility exports; all state now lives in Django.
+export { StoreProvider as DemoProvider, useStore as useDemo } from "../server/context";

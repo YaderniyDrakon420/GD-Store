@@ -11,7 +11,11 @@ from django.conf import settings
 with tempfile.TemporaryDirectory(prefix="gd-integration-") as directory:
     settings.DATABASES["default"]["NAME"] = str(Path(directory) / "test.sqlite3")
     settings.MEDIA_ROOT = Path(directory) / "media"
+    settings.PRIVATE_UPLOAD_ROOT = Path(directory) / "private_uploads"
     settings.ALLOWED_HOSTS = ["127.0.0.1", "localhost"]
+    settings.DEBUG = True
+    settings.SESSION_COOKIE_SECURE = False
+    settings.CSRF_COOKIE_SECURE = False
     import django
     django.setup()
     from django.core.management import call_command

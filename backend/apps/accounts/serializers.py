@@ -1,5 +1,6 @@
 from django.contrib.auth import get_user_model
 from django.contrib.auth.password_validation import validate_password
+from django.core.exceptions import ValidationError as DjangoValidationError
 from rest_framework import serializers
 
 from .models import Friendship
@@ -8,18 +9,32 @@ User = get_user_model()
 
 
 class RegisterSerializer(serializers.ModelSerializer):
-    password = serializers.CharField(write_only=True, min_length=8)
+    password = serializers.CharField(write_only=True, min_length=8, max_length=128)
+    email = serializers.EmailField(required=True)
 
     class Meta:
         model = User
-        fields = ["id", "username", "email", "password", "display_name"]
-
-    def validate(self, attrs):
-        validate_password(attrs["password"], User(username=attrs.get("username", ""), email=attrs.get("email", "")))
-        return attrs
+        fields = ["id", "username", "email", "password"]
 
     def create(self, validated_data):
         return User.objects.create_user(**validated_data)
+
+    def validate_username(self, value):
+        if User.objects.filter(username__iexact=value).exists():
+            raise serializers.ValidationError("Этот логин уже занят.")
+        return value
+
+    def validate_email(self, value):
+        if User.objects.filter(email__iexact=value).exists():
+            raise serializers.ValidationError("Этот email уже занят.")
+        return value.lower()
+
+    def validate(self, attrs):
+        try:
+            validate_password(attrs["password"], User(username=attrs["username"], email=attrs["email"]))
+        except DjangoValidationError as exc:
+            raise serializers.ValidationError({"password": exc.messages}) from exc
+        return attrs
 
 
 class UserPublicSerializer(serializers.ModelSerializer):
@@ -48,6 +63,7 @@ class UserMeSerializer(serializers.ModelSerializer):
             "is_email_verified",
         ]
         read_only_fields = [
+            "username",
             "email",
             "wallet_balance",
             "is_email_verified",
@@ -86,6 +102,9 @@ class FriendRequestCreateSerializer(serializers.ModelSerializer):
 
     def validate_to_user(self, to_user):
         request_user = self.context["request"].user
+        from apps.studio.common import profile
+        if not to_user.is_active or profile(to_user).preferences.get("requestsPrivacy", "all") != "all":
+            raise serializers.ValidationError("Пользователь не принимает заявки в друзья.")
 
         if to_user == request_user:
             raise serializers.ValidationError(

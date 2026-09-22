@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useDemo } from "../demo/context";
-import { games } from "../demo/model.mjs";
+import { games } from "../server/catalog.mjs";
 import { GameCard, Empty } from "./Studio";
 import { Modal } from "./Personal";
 export default function Showcase({ user }) {
@@ -45,9 +45,9 @@ export default function Showcase({ user }) {
         <Modal title="Ваша витрина" onClose={() => setDraft(null)}>
           <form
             className="form-stack"
-            onSubmit={(e) => {
+            onSubmit={async (e) => {
               e.preventDefault();
-              if (act({ type: "showcase-save", ...draft }, "Витрина обновлена"))
+              if (await act({ type: "showcase-save", ...draft }, "Витрина обновлена"))
                 setDraft(null);
             }}
           >

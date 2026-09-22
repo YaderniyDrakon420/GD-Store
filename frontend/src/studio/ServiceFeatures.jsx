@@ -1,23 +1,18 @@
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { useDemo } from "../demo/context";
-import { games } from "../demo/model.mjs";
+import { games } from "../server/catalog.mjs";
 import { Head, Gate } from "./Studio";
 import { Author, date } from "./Personal";
 export function Privacy() {
   const { state, me, act } = useDemo();
   if (!me) return null;
   const s = state.settings[me.id] || {};
-  const change = (key, value) =>
-    act(
+  const change = async (key, value) =>
+    await act(
       {
         type: "privacy-save",
-        libraryPrivacy: s.libraryPrivacy || "all",
-        activityPrivacy: s.activityPrivacy || "all",
-        friendsPrivacy: s.friendsPrivacy || "all",
-        requestsPrivacy: s.requestsPrivacy || "all",
-        saleAlerts: s.saleAlerts !== false,
-        [key]: value,
+        values: { [key]: value },
       },
       "Настройки сохранены",
     );
@@ -75,24 +70,24 @@ export function SaleDemo() {
     <section className="panel space">
       <h2>Уведомления о скидках</h2>
       <p className="muted space">
-        При проверке цены сравниваются с предыдущими. В локальной версии каталог
-        сам не обновляется.
+        При проверке сервер сравнивает текущие цены с предыдущими и сообщает
+        о снижении цены игр из желаемого.
       </p>
       <div className="actions space">
         <button
           className="btn"
           disabled={!me || me.banned}
-          onClick={() => act({ type: "sale-check" }, "Цены проверены")}
+          onClick={async () => await act({ type: "sale-check" }, "Цены проверены")}
         >
           Проверить цены
         </button>
         <button
           className="btn"
           disabled={
-            !items.length || state.settings[me?.id]?.saleAlerts === false
+            !state.paymentTestMode || !items.length || state.settings[me?.id]?.saleAlerts === false
           }
-          onClick={() =>
-            act(
+          onClick={async () =>
+            await act(
               { type: "sale-demo", game: items[0].id },
               "Пример отправлен в уведомления",
             )
@@ -210,7 +205,7 @@ export function ReviewList({ game }) {
             className="btn"
             disabled={!me || me.banned || me.id === r.author}
             aria-pressed={r.helpful?.includes(me?.id) || false}
-            onClick={() => act({ type: "review-vote", review: r.id })}
+            onClick={async () => await act({ type: "review-vote", review: r.id })}
           >
             {r.helpful?.includes(me?.id) ? "Полезно ✓" : "Полезно"} ·{" "}
             {r.helpful?.length || 0}

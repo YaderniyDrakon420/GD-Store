@@ -17,16 +17,16 @@ export default function Wallet() {
         <section className="wallet-card">
           <p>Доступно для покупок</p>
           <h2>{new Intl.NumberFormat("ru-RU").format(me?.wallet || 0)} ₴</h2>
-          <span>ЛОКАЛЬНЫЙ ДЕМОБАЛАНС</span>
+            <span>УЧЕБНЫЙ БАЛАНС</span>
           <Link className="btn space" to="/points-history">
             ✦ {me?.points || 0} демобаллов →
           </Link>
         </section>
         <form
           className="panel form-stack"
-          onSubmit={(e) => {
+          onSubmit={async (e) => {
             e.preventDefault();
-            act(
+            await act(
               { type: "wallet-topup", amount: Number(amount) },
               "Демокошелёк пополнен",
             );
@@ -61,7 +61,7 @@ export default function Wallet() {
             Демонстрационное пополнение без карты и списания денег. Пополнение
             не начисляет демобаллы — они выдаются за покупки игр.
           </p>
-          <button className="btn primary">Добавить демосредства</button>
+          <button className="btn primary" disabled={!state.paymentTestMode}>Добавить демосредства</button>
         </form>
       </div>
       <section className="panel space">

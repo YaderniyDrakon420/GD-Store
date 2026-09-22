@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { useDemo } from "../demo/context";
-import { games } from "../demo/model.mjs";
+import { games } from "../server/catalog.mjs";
 import { eventVisible } from "../demo/social.mjs";
 import { Head, Art, Avatar, Empty, Gate } from "./Studio";
 import { Modal, Author } from "./Personal";
@@ -37,10 +37,10 @@ export default function Events() {
           : e.host === me?.id,
     )
     .sort((a, b) => new Date(a.startsAt) - new Date(b.startsAt));
-  const save = (values) => {
+  const save = async (values) => {
     const eventId = form?.id || crypto.randomUUID();
     if (
-      act(
+      await act(
         {
           ...values,
           type: form?.id ? "event-edit" : "event-create",
@@ -140,8 +140,8 @@ export default function Events() {
                           "btn " +
                           (event.rsvp[me?.id] === status ? "primary" : "")
                         }
-                        onClick={() =>
-                          act(
+                        onClick={async () =>
+                          await act(
                             { type: "event-rsvp", event: id, status },
                             "Ответ отправлен организатору",
                           )
@@ -154,7 +154,7 @@ export default function Events() {
                 </>
               )}
               <p className="fine space">
-                Время показано в вашем часовом поясе. Приглашения локальные;
+                Время показано в вашем часовом поясе. Друзья получат приглашения;
                 игру и голосовой чат сайт не запускает.
               </p>
             </section>
@@ -266,8 +266,8 @@ export default function Events() {
             </button>
             <button
               className="btn danger"
-              onClick={() => {
-                if (act({ type: "event-cancel", event: id }, "Вечер отменён"))
+              onClick={async () => {
+                if (await act({ type: "event-cancel", event: id }, "Вечер отменён"))
                   setCancel(false);
               }}
             >

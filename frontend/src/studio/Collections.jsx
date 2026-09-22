@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Link, useParams, useNavigate } from "react-router-dom";
 import { useDemo } from "../demo/context";
-import { games } from "../demo/model.mjs";
+import { games } from "../server/catalog.mjs";
 import { Head, Gate, Art, GameCard, Empty } from "./Studio";
 import { Modal } from "./Personal";
 import Icon from "../components/Icon";
@@ -13,10 +13,10 @@ export default function Collections() {
     [remove, setRemove] = useState(false);
   const mine = state.collections.filter((c) => c.owner === me?.id);
   const selected = mine.find((c) => c.id === id);
-  const save = (values) => {
+  const save = async (values) => {
     const collection = edit?.id || crypto.randomUUID();
     if (
-      act(
+      await act(
         {
           ...values,
           type: "collection-save",
@@ -150,9 +150,9 @@ export default function Collections() {
             </button>
             <button
               className="btn danger"
-              onClick={() => {
+              onClick={async () => {
                 if (
-                  act(
+                  await act(
                     { type: "collection-delete", collection: id },
                     "Коллекция удалена",
                   )

@@ -1,7 +1,7 @@
 import { TeamChat } from "./TeamChat";
 import { useState } from "react";
 import { useDemo } from "../demo/context";
-import { games } from "../demo/model.mjs";
+import { games } from "../server/catalog.mjs";
 import { Head, Gate, Art, Empty } from "./Studio";
 import { Modal, Author } from "./Personal";
 export default function Teammates() {
@@ -139,8 +139,8 @@ export default function Teammates() {
                       <button
                         className="btn"
                         disabled={ended}
-                        onClick={() =>
-                          act(
+                        onClick={async () =>
+                          await act(
                             { type: "party-close", party: p.id },
                             "Набор закрыт",
                           )
@@ -152,8 +152,8 @@ export default function Teammates() {
                   ) : joined ? (
                     <button
                       className="btn"
-                      onClick={() =>
-                        act(
+                      onClick={async () =>
+                        await act(
                           { type: "party-leave", party: p.id },
                           "Вы вышли из команды",
                         )
@@ -165,8 +165,8 @@ export default function Teammates() {
                     <button
                       className="btn primary"
                       disabled={ended || p.members.length >= p.capacity}
-                      onClick={() =>
-                        act(
+                      onClick={async () =>
+                        await act(
                           { type: "party-join", party: p.id },
                           "Вы в команде!",
                         )
@@ -196,10 +196,10 @@ export default function Teammates() {
         >
           <form
             className="form-stack"
-            onSubmit={(e) => {
+            onSubmit={async (e) => {
               e.preventDefault();
               if (
-                act(
+                await act(
                   {
                     ...form,
                     type: "party-save",

@@ -19,12 +19,12 @@ export function NotificationSettings() {
           <input
             type="checkbox"
             checked={prefs[key] !== false}
-            onChange={(e) =>
-              act(
+            onChange={async (e) =>
+              await act(
                 {
                   type: "settings",
                   values: {
-                    notifications: { ...prefs, [key]: e.target.checked },
+                    notifications: { [key]: e.target.checked },
                   },
                 },
                 "Уведомления настроены",
@@ -50,7 +50,7 @@ export function TeamChat({ party }) {
       {open && (
         <Modal title={"Чат · " + party.title} onClose={() => setOpen(false)}>
           <p className="fine">
-            Чат доступен текущим участникам команды. Локальная демонстрация.
+            Чат доступен текущим участникам команды.
           </p>
           <div className="team-chat-history" tabIndex={0}>
             {messages.map((m) => (
@@ -71,16 +71,16 @@ export function TeamChat({ party }) {
               </p>
             )}
           </div>
-          {party.closed ? (
+          {party.closed || new Date(party.startsAt) <= new Date() ? (
             <p className="muted space">
               Набор закрыт. История доступна для чтения.
             </p>
           ) : (
             <form
               className="form-stack space"
-              onSubmit={(e) => {
+              onSubmit={async (e) => {
                 e.preventDefault();
-                if (act({ type: "party-message", party: party.id, text }))
+                if (await act({ type: "party-message", party: party.id, text }))
                   setText("");
               }}
             >

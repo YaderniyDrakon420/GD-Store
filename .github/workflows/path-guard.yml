@@ -14,8 +14,9 @@ jobs:
 
       - name: Определить разрешённую зону по имени ветки
         id: zone
+        env:
+          BRANCH: ${{ github.head_ref }}
         run: |
-          BRANCH="${{ github.head_ref }}"
           echo "branch=$BRANCH"
 
           case "$BRANCH" in

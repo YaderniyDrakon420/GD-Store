@@ -2,11 +2,11 @@ import { ReviewList } from "./ServiceFeatures";
 import { visibleSection } from "../demo/service.mjs";
 import Showcase from "./Showcase";
 import { ReportButton } from "./Reports";
-import { cosmetics } from "../demo/community.mjs";
-import { useEffect, useState, useRef } from "react";
+import { cosmetics } from "../server/catalog.mjs";
+import { useState, useEffect, useRef } from "react";
 import { Link, useParams } from "react-router-dom";
 import { useDemo } from "../demo/context";
-import { price } from "../demo/model.mjs";
+import { games, price } from "../server/catalog.mjs";
 import {
   Art,
   Avatar,
@@ -60,16 +60,13 @@ export function Author({ id }) {
 export const date = (at) =>
   new Date(at).toLocaleDateString("ru-RU", { day: "numeric", month: "short" });
 export function Game() {
-  const { games } = useDemo();
   const { slug } = useParams();
   const g = games.find((g) => g.id === slug);
   const { state, me, act } = useDemo();
   const [tab, setTab] = useState("Об игре"),
     [review, setReview] = useState(""),
     [positive, setPositive] = useState(true);
-  const { loadGame, loadReviews, notify, loading } = useDemo();
-  useEffect(() => { loadGame(slug).catch(e => notify(e.message)); loadReviews(slug).catch(e => notify(e.message)); }, [slug, g?.apiId]);
-  if (!g) return loading ? <Head title="Загружаем игру…" /> : <NotFound />;
+  if (!g) return <NotFound />;
   const owned = state.library[me?.id]?.includes(g.id),
     cart = state.cart[me?.id]?.includes(g.id),
     wished = state.wishlist[me?.id]?.includes(g.id);
@@ -133,17 +130,17 @@ export function Game() {
             <div className="panel">
               <h2>Коллекция достижений</h2>
               <p className="muted space">Демонстрационная витрина прогресса</p>
-              <Achievements game={g} owned={owned && me?.id === "karim"} />
+              <Achievements game={g} owned={false} />
             </div>
           ) : (
             <div className="panel">
               <h2>Отзывы игроков</h2>
               <div className="review-score">
-                <strong>{g.rating === null ? "—" : g.rating + "%"}</strong>
+                <strong>{g.rating}%</strong>
                 <span>
                   Положительные
                   <br />
-                  <small>Оценка игроков</small>
+                  <small>Демонстрационная оценка</small>
                 </span>
               </div>
               <ReviewList game={g.id} />
@@ -211,21 +208,22 @@ export function Game() {
           ) : (
             <button
               className="btn primary"
-              onClick={() =>
-                act(
+              disabled={g.available === false && !cart}
+              onClick={async () =>
+                await act(
                   { type: "cart", game: g.id },
                   cart ? "Удалено из корзины" : "Добавлено в корзину",
                 )
               }
             >
               <Icon name="cart" />
-              {cart ? "Убрать из корзины" : "В корзину"}
+              {cart ? "Убрать из корзины" : g.available === false ? "Снято с продажи" : "В корзину"}
             </button>
           )}
           <button
             className="btn"
-            onClick={() =>
-              act(
+            onClick={async () =>
+              await act(
                 { type: "wishlist", game: g.id },
                 wished ? "Удалено из желаемого" : "Добавлено в желаемое",
               )
@@ -265,7 +263,6 @@ export function Achievements({ owned }) {
   );
 }
 export function Collection({ kind }) {
-  const { games } = useDemo();
   const { state, me, act } = useDemo();
   const [search, setSearch] = useState(""),
     [sort, setSort] = useState("title");
@@ -355,9 +352,9 @@ export function Collection({ kind }) {
             <div key={g.id}>
               <GameCard game={g} />
               <div className="library-meta">
-                <span>{me?.id === "karim" ? g.hours : 0} ч. в игре</span>
+                <span>{g.hours} ч. в игре</span>
                 <span>
-                  {me?.id === "karim" ? g.achievements : 0} /{" "}
+                  {g.achievements} /{" "}
                   {g.totalAchievements}
                 </span>
               </div>
@@ -375,15 +372,15 @@ export function Collection({ kind }) {
                 <Link to={"/game/" + g.id}>
                   <h3>{g.title}</h3>
                 </Link>
-                <p className="muted">{g.genre}</p>
+                <p className="muted">{g.available === false ? "Снято с продажи — удалите из корзины" : g.genre}</p>
               </div>
               <strong>{money(price(g))}</strong>
               {kind === "wishlist" && (
                 <button
                   className="btn"
-                  disabled={state.cart[me?.id]?.includes(g.id)}
-                  onClick={() =>
-                    act({ type: "cart", game: g.id }, "Добавлено в корзину")
+                  disabled={g.available === false || state.cart[me?.id]?.includes(g.id)}
+                  onClick={async () =>
+                    await act({ type: "cart", game: g.id }, "Добавлено в корзину")
                   }
                 >
                   В корзину
@@ -392,7 +389,7 @@ export function Collection({ kind }) {
               <button
                 className="link-button"
                 aria-label={"Удалить " + g.title}
-                onClick={() => act({ type: kind, game: g.id })}
+                onClick={async () => await act({ type: kind, game: g.id })}
               >
                 ×
               </button>
@@ -421,7 +418,6 @@ export function Collection({ kind }) {
   );
 }
 export function Profile() {
-  const { games } = useDemo();
   const { id } = useParams();
   const { state, me, act } = useDemo();
   const user = state.users.find((u) => u.id === (id || me?.id));
@@ -511,8 +507,8 @@ export function Profile() {
           <button
             className="btn primary"
             disabled={!!relation}
-            onClick={() =>
-              act({ type: "request", user: user.id }, "Заявка отправлена")
+            onClick={async () =>
+              await act({ type: "request", user: user.id }, "Заявка отправлена")
             }
           >
             {relation ? "Заявка / блокировка" : "Добавить в друзья"}
@@ -535,7 +531,7 @@ export function Profile() {
               [libraryVisible ? owned.length : "—", "Игр"],
               [
                 owned.reduce(
-                  (s, g) => s + (user.id === "karim" ? g.hours : 0),
+                  (s, g) => s + (own ? g.hours : 0),
                   0,
                 ),
                 "Часов в игре",
@@ -575,7 +571,7 @@ export function Profile() {
               <Achievements
                 game={games[0]}
                 owned={
-                  libraryVisible && user.id === "karim" && owned.length > 0
+                  false
                 }
               />
             </div>
@@ -655,14 +651,13 @@ export function Profile() {
   );
 }
 export function ProfileForm({ user, onSave }) {
-  const { games } = useDemo();
   const [values, setValues] = useState(user);
   const [uploadError, setUploadError] = useState("");
   const field = (k, v) => setValues({ ...values, [k]: v });
   return (
     <form
       className="form-stack"
-      onSubmit={async (e) => {
+      onSubmit={(e) => {
         e.preventDefault();
         onSave(values);
       }}

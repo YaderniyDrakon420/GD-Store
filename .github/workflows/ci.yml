@@ -6,7 +6,6 @@ on:
 
 jobs:
   backend:
-    if: contains(github.event.pull_request.changed_files, 'backend') || true
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -18,7 +17,8 @@ jobs:
           python-version: "3.12"
       - run: pip install -r requirements.txt
       - run: python manage.py check
-      # - run: pytest   # добавить когда появятся тесты
+      - run: python manage.py makemigrations --check --dry-run
+      - run: python manage.py test --settings=config.test_settings --noinput
 
   frontend:
     runs-on: ubuntu-latest
@@ -29,7 +29,15 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
-      - run: npm install
+          node-version: 22
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -r ../backend/requirements.txt
+      - run: npm ci
       - run: npm run lint
+      - run: npm test
       - run: npm run build
+      - run: npm run test:integration
+        env:
+          PYTHON: python

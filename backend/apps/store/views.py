@@ -359,9 +359,12 @@ class OrderViewSet(viewsets.ReadOnlyModelViewSet):
         del pk
 
         from apps.payments.models import Payment
+        from apps.studio.common import lock_mutations
+        from apps.studio.commerce import refund_educational
 
         reference = self.get_object()
         with transaction.atomic():
+            lock_mutations()
             lock_order_participants(reference.user_id, reference.recipient_id)
             order = (
                 Order.objects
@@ -394,6 +397,7 @@ class OrderViewSet(viewsets.ReadOnlyModelViewSet):
                     status=status.HTTP_409_CONFLICT,
                 )
 
+            refund_educational(order)
             beneficiary = order.beneficiary
 
             for item in order.items.all():
