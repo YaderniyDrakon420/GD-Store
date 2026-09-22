@@ -14,6 +14,9 @@ with tempfile.TemporaryDirectory(prefix="gd-integration-") as directory:
     settings.PRIVATE_UPLOAD_ROOT = Path(directory) / "private_uploads"
     settings.ALLOWED_HOSTS = ["127.0.0.1", "localhost"]
     settings.DEBUG = True
+    # Browsers share cookies across localhost ports; keep the disposable test
+    # login separate from a developer's normal GD Store session.
+    settings.SESSION_COOKIE_NAME = "gd_integration_session"
     settings.SESSION_COOKIE_SECURE = False
     settings.CSRF_COOKIE_SECURE = False
     import django
@@ -26,5 +29,6 @@ with tempfile.TemporaryDirectory(prefix="gd-integration-") as directory:
     User = get_user_model()
     alice = User.objects.create_user(username="alice", password="Test-strong-pass-42")
     bob = User.objects.create_user(username="bob", password="Test-strong-pass-42")
+    User.objects.create_superuser(username="owner", email="owner@example.test", password="Test-strong-pass-42")
     Friendship.objects.create(from_user=alice, to_user=bob, status="accepted")
     call_command("runserver", "127.0.0.1:" + sys.argv[1], use_reloader=False)

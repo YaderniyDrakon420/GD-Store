@@ -10,14 +10,15 @@ from apps.accounts.models import User, Friendship
 from apps.library.models import LibraryEntry
 from apps.reviews.models import Review
 from apps.store.models import CartItem, Wishlist, Order
-from .models import Profile, Record, WalletEntry, PointsEntry
+from .models import Profile, Record, WalletEntry, PointsEntry, PinnedMessage
+from apps.catalog.models import Game
 from .common import document
 from .catalog import catalog
 
 COSMETICS = json.loads((Path(__file__).with_name("cosmetics.json")).read_text(encoding="utf-8"))
 ARRAYS = ("friends messages topics mods orders reviews activity adminLog events notifications "
           "collections gifts reports parties tickets pointsLog walletLog").split()
-MAPS = ("library wishlist cart settings subscriptions comparison cosmeticsOwned saleWatch").split()
+MAPS = ("library wishlist cart settings subscriptions comparison cosmeticsOwned saleWatch recentViews").split()
 
 
 def snapshot(viewer):
@@ -97,6 +98,7 @@ def snapshot(viewer):
                 "at": review.created_at.isoformat(), "helpful": []})
 
     subscriptions = []
+    pins = dict(PinnedMessage.objects.values_list("message_id", "pinned_by_id")) if uid else {}
     for row in Record.objects.all():
         owner, kind, data = str(row.owner_id), row.kind, row.data
         own = uid == owner
@@ -107,6 +109,10 @@ def snapshot(viewer):
         elif kind in ["comparison", "cosmeticsOwned", "saleWatch"]:
             if own:
                 state[kind][uid] = data.get("value", {} if kind == "saleWatch" else [])
+        elif kind == "recentViews" and own:
+            ids = data.get("value", [])
+            available = set(Game.objects.filter(slug__in=ids, is_published=True).values_list("slug", flat=True))
+            state[kind][uid] = [slug for slug in ids if slug in available]
         elif kind == "orderMeta" and own:
             for order in state["orders"]:
                 if order["id"] == data.get("order"):
@@ -124,7 +130,8 @@ def snapshot(viewer):
                 state[kind].append(doc)
         elif kind == "messages":
             if uid and uid in [data.get("from"), data.get("to")]:
-                state[kind].append(document(row))
+                state[kind].append({**document(row), "pinned": row.pk in pins,
+                                    "pinnedBy": str(pins[row.pk]) if row.pk in pins else None})
         elif kind == "events":
             if own or (uid and uid in data.get("invitees", [])):
                 state[kind].append(document(row))

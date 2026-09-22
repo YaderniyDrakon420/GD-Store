@@ -5,7 +5,7 @@ from apps.accounts.models import Friendship, User
 from apps.chat.models import Conversation, Message
 from apps.library.models import LibraryEntry
 from apps.reviews.models import Review
-from .models import Record, Upload
+from .models import Record, Upload, PinnedMessage
 from .chat_bridge import message_record_id
 from .common import (text, choice, get_game, get_user, friends, blocked, pair, profile,
                      record, create, new_record, bucket, save, notify)
@@ -18,6 +18,28 @@ def visible(row, user, *, writable=False):
 
 def social_action(user, a):
     kind, uid = a["type"], str(user.pk)
+    if kind == "message-pin":
+        row = record("messages", a.get("message"))
+        participants = {row.data.get("from"), row.data.get("to")}
+        if uid not in participants or len(participants) != 2:
+            raise PermissionDenied("Закрепления доступны только участникам переписки.")
+        other = get_user(next(value for value in participants if value != uid))
+        if not friends(user, other):
+            raise PermissionDenied("Закреплять сообщения могут только друзья.")
+        if type(a.get("pinned")) is not bool:
+            raise ValidationError("Передайте состояние закрепления.")
+        if a["pinned"]:
+            if not PinnedMessage.objects.filter(message=row).exists():
+                count = sum(
+                    {pin.message.data.get("from"), pin.message.data.get("to")} == participants
+                    for pin in PinnedMessage.objects.select_related("message").filter(message__owner_id__in=[user.pk, other.pk])
+                )
+                if count >= 10:
+                    raise ValidationError("В одном диалоге можно закрепить до 10 сообщений.")
+            PinnedMessage.objects.get_or_create(message=row, defaults={"pinned_by": user})
+        else:
+            PinnedMessage.objects.filter(message=row).delete()
+        return {"pinned": a["pinned"]}
     if kind in ("request", "block", "message"):
         other = get_user(a.get("user"))
         if user == other:

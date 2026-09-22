@@ -50,6 +50,7 @@ class SystemRequirementSerializer(serializers.ModelSerializer):
             "ram",
             "gpu",
             "storage",
+            "notes",
         ]
 
 

@@ -1,4 +1,5 @@
 import { ReviewList } from "./ServiceFeatures";
+import { GameExtras } from "./GameExtras";
 import { visibleSection } from "../demo/service.mjs";
 import Showcase from "./Showcase";
 import { ReportButton } from "./Reports";
@@ -66,6 +67,16 @@ export function Game() {
   const [tab, setTab] = useState("Об игре"),
     [review, setReview] = useState(""),
     [positive, setPositive] = useState(true);
+  const visitAction = useRef(act);
+  visitAction.current = act;
+  const lastVisit = useRef("");
+  useEffect(() => {
+    const key = `${me?.id}:${g?.id}`;
+    if (me?.id && g?.id && g.available !== false && lastVisit.current !== key) {
+      lastVisit.current = key;
+      void visitAction.current({ type: "game-view", game: g.id });
+    }
+  }, [me?.id, g?.id, g?.available]);
   if (!g) return <NotFound />;
   const owned = state.library[me?.id]?.includes(g.id),
     cart = state.cart[me?.id]?.includes(g.id),
@@ -107,6 +118,7 @@ export function Game() {
             <div className="panel prose">
               <h2>Откройте новый мир</h2>
               <p>{g.description}</p>
+              <GameExtras key={g.id} game={g} />
               <div className="detail-links">
                 <Link to={"/community?game=" + g.id}>Обсуждения ↗</Link>
                 <Link to={"/workshop?game=" + g.id}>Мастерская ↗</Link>

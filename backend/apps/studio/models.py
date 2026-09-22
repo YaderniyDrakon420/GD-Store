@@ -85,3 +85,19 @@ class Upload(models.Model):
 class GamePresentation(models.Model):
     game = models.OneToOneField("catalog.Game", on_delete=models.CASCADE)
     data = models.JSONField(default=dict, blank=True)
+
+
+class PinnedMessage(models.Model):
+    message = models.OneToOneField(Record, on_delete=models.CASCADE, related_name="chat_pin")
+    pinned_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+
+class GameReleaseNotice(models.Model):
+    """Persistent delivery marker, also records an explicit notification opt-out."""
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    game = models.ForeignKey("catalog.Game", on_delete=models.CASCADE)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        constraints = [models.UniqueConstraint(fields=["user", "game"], name="studio_release_once")]

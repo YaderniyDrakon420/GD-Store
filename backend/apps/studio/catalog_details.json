@@ -1,0 +1,53 @@
+{
+  "gta-v": {
+    "screenshots": [
+      "/art/screenshots/gta-v-1.jpg",
+      "/art/screenshots/gta-v-2.jpg",
+      "/art/screenshots/gta-v-3.jpg"
+    ],
+    "requirements": {
+      "os": "Windows 10 (latest service pack)",
+      "cpu": "Intel® Core™ i7-4770 | AMD FX™-9590",
+      "ram": "8 GB RAM",
+      "gpu": "NVIDIA GeForce® GTX 1630 (4GB VRAM) | AMD Radeon™ RX 6400 (4GB VRAM)",
+      "storage": "105 GB available space",
+      "notes": "Нужен SSD. Windows и процессор — 64-разрядные. Для активации требуется интернет и учётная запись Rockstar Games."
+    },
+    "source": "https://store.steampowered.com/app/3240220/",
+    "checked": "2026-09-22"
+  },
+  "cs2": {
+    "screenshots": [
+      "/art/screenshots/cs2-1.jpg",
+      "/art/screenshots/cs2-2.jpg",
+      "/art/screenshots/cs2-3.jpg"
+    ],
+    "requirements": {
+      "os": "Windows® 10",
+      "cpu": "4 hardware CPU threads - Intel® Core™ i5 750 or higher",
+      "ram": "8 GB RAM",
+      "gpu": "Video card must be 1 GB or more and should be a DirectX 11-compatible with support for Shader Model 5.0",
+      "storage": "85 GB available space",
+      "notes": "Нужны DirectX 11, Shader Model 5.0 и подключение к интернету."
+    },
+    "source": "https://store.steampowered.com/app/730/",
+    "checked": "2026-09-22"
+  },
+  "dota2": {
+    "screenshots": [
+      "/art/screenshots/dota2-1.jpg",
+      "/art/screenshots/dota2-2.jpg",
+      "/art/screenshots/dota2-3.jpg"
+    ],
+    "requirements": {
+      "os": "Windows 7 or newer",
+      "cpu": "Dual core from Intel or AMD at 2.8 GHz",
+      "ram": "4 GB RAM",
+      "gpu": "NVIDIA GeForce 8600/9600GT, ATI/AMD Radeon HD2600/3600",
+      "storage": "60 GB available space",
+      "notes": "Нужны DirectX 11 и подключение к интернету. Steam поддерживает Windows 10 и новее."
+    },
+    "source": "https://store.steampowered.com/app/570/",
+    "checked": "2026-09-22"
+  }
+}

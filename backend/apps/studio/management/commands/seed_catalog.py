@@ -5,7 +5,7 @@ from django.conf import settings
 from django.core.files import File
 from django.core.management.base import BaseCommand
 from django.db import transaction
-from apps.catalog.models import Game, Genre, Tag, Developer
+from apps.catalog.models import Game, Genre, Tag, Developer, Screenshot, SystemRequirement
 from apps.store.models import PromoCode
 from apps.studio.models import GamePresentation
 
@@ -16,6 +16,7 @@ class Command(BaseCommand):
     @transaction.atomic
     def handle(self, *args, **options):
         rows = json.loads((Path(__file__).parents[2] / "catalog_seed.json").read_text(encoding="utf-8"))
+        details = json.loads((Path(__file__).parents[2] / "catalog_details.json").read_text(encoding="utf-8"))
         retired = Game.objects.filter(slug__in=[
             "orbital", "ashen", "velocity", "echoes", "hollow", "nightshift",
         ], is_published=True).update(is_published=False)
@@ -31,6 +32,16 @@ class Command(BaseCommand):
             GamePresentation.objects.get_or_create(game=game, defaults={"data": {
                 key: row[key] for key in ["image", "color", "position"]
             }})
+            detail = details.get(game.slug, {})
+            if detail.get("requirements"):
+                SystemRequirement.objects.get_or_create(game=game, defaults=detail["requirements"])
+            if not game.screenshots.exists():
+                for index, image_path in enumerate(detail.get("screenshots", [])):
+                    image = settings.BASE_DIR.parent / "frontend/public" / image_path.lstrip("/")
+                    if image.is_file():
+                        screenshot = Screenshot(game=game, order=index)
+                        with image.open("rb") as handle:
+                            screenshot.image.save(image.name, File(handle))
             if not created:
                 continue
             added += 1

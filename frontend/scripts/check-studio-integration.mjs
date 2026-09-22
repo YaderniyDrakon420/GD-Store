@@ -24,11 +24,18 @@ for (const key of ["window", "document", "sessionStorage", "localStorage", "loca
 globalThis.dispatchEvent = window.dispatchEvent.bind(window);
 globalThis.IS_REACT_ACT_ENVIRONMENT = true;
 window.HTMLElement.prototype.scrollIntoView = () => {};
+window.HTMLDialogElement.prototype.showModal = function () { this.setAttribute("open", ""); };
+window.HTMLDialogElement.prototype.close = function () { this.removeAttribute("open"); };
 const nativeFetch = globalThis.fetch;
 const cookies = new Map();
+const topupRequests = [];
 globalThis.fetch = async (path, options = {}) => {
   const url = new URL(path, apiRoot);
   assert.equal(url.origin, apiRoot, "Integration requests must stay on the isolated server");
+  if (url.pathname.endsWith("/studio/commands/") && options.body) {
+    const body = JSON.parse(options.body);
+    if (body.type === "wallet-topup") topupRequests.push(body);
+  }
   const headers = new Headers(options.headers);
   if (cookies.size) headers.set("Cookie", [...cookies].map(([k, v]) => `${k}=${v}`).join("; "));
   const response = await nativeFetch(url, { ...options, headers });
@@ -40,9 +47,9 @@ globalThis.fetch = async (path, options = {}) => {
   }
   return response;
 };
-async function json(path, body, extraHeaders = {}) {
+async function json(path, body, extraHeaders = {}, method = "POST") {
   const response = await fetch("/api/v1/" + path, body ? {
-    method: "POST", headers: { "Content-Type": "application/json", "X-CSRFToken": cookies.get("csrftoken") || "", ...extraHeaders },
+    method, headers: { "Content-Type": "application/json", "X-CSRFToken": cookies.get("csrftoken") || "", ...extraHeaders },
     body: JSON.stringify(body),
   } : undefined);
   const data = await response.json();
@@ -75,9 +82,47 @@ try {
   assert.ok(alice, "Login did not establish a session");
   assert.deepEqual(snapshot.games.map(g => g.id), ["gta-v", "gta-vi", "cs2", "dota2"]);
   const bob = snapshot.state.users.find(u => u.handle === "bob").id;
-  await json("studio/commands/", { type: "wallet-topup", amount: 1000 }, { "Idempotency-Key": crypto.randomUUID(), "X-Store-User": alice });
   server = await createServer({ server: { middlewareMode: true }, appType: "custom", optimizeDeps: { noDiscovery: true, include: [] } });
   const { default: App } = await server.ssrLoadModule("/src/App.jsx");
+  root = createRoot(document.getElementById("root"));
+  await act(async () => root.render(React.createElement(MemoryRouter, { initialEntries: ["/wallet"] }, React.createElement(App))));
+  await until(() => document.querySelector(".wallet-layout form"), "Wallet form did not load");
+  const walletForm = document.querySelector(".wallet-layout form");
+  const topupButton = () => button("Пополнить демобаланс");
+  const fillCard = async (key, value) => {
+    await act(async () => Simulate.change(document.querySelector(`[name="demo-${key}"]`), { target: { value } }));
+  };
+  assert.ok(topupButton().disabled, "Empty card must not allow topup");
+  await act(async () => Simulate.submit(walletForm));
+  assert.equal(topupRequests.length, 0);
+  await act(async () => button("1000 ₴").click());
+  await fillCard("number", "not-a-card");
+  await fillCard("name", "DEMO NAME");
+  await fillCard("expiry", "old-date");
+  assert.ok(topupButton().disabled, "Missing CVC must not allow topup");
+  await act(async () => Simulate.submit(walletForm));
+  assert.equal(topupRequests.length, 0);
+  await fillCard("cvc", "abc");
+  await fillCard("name", "   ");
+  assert.ok(topupButton().disabled, "Whitespace is not a filled field");
+  await fillCard("name", "DEMO NAME");
+  assert.ok(!topupButton().disabled, "Arbitrary filled demo details must be accepted");
+  await act(async () => {
+    Simulate.submit(walletForm);
+    Simulate.submit(walletForm);
+  });
+  await until(() => document.querySelector('[name="demo-number"]').value === "", "Successful topup must clear demo details");
+  assert.deepEqual(topupRequests, [{ type: "wallet-topup", amount: 1000 }], "Only one amount-only request may reach Django");
+  for (const key of ["number", "name", "expiry", "cvc"])
+    assert.equal(document.querySelector(`[name="demo-${key}"]`).value, "");
+  assert.ok(topupButton().disabled);
+  snapshot = await json("studio/snapshot/");
+  assert.equal(snapshot.state.users.find(u => u.id === alice).wallet, 1000);
+  assert.equal(snapshot.state.users.find(u => u.id === alice).points, 0);
+  assert.equal(snapshot.state.walletLog.filter(row => row.user === alice).length, 1);
+  console.log("ACTION OK wallet form: required fields, arbitrary demo data, no card transmission, one persisted credit");
+  await act(async () => root.unmount());
+  root = null;
   const routes = ["/", "/game/gta-v", "/profile", "/library", "/cart", "/checkout", "/orders", "/friends", "/messages/" + bob,
     "/settings", "/compare", "/discover", "/community", "/workshop", "/wallet", "/support", "/events", "/teammates", "/notifications", "/collections"];
   for (const route of routes) {
@@ -87,6 +132,19 @@ try {
     assert.ok(!document.body.textContent.includes("Сервер недоступен"), "Network failure: " + route);
     console.log("RENDER OK", route);
     if (route === "/game/gta-v") {
+      assert.equal(document.querySelectorAll(".gallery-thumbs button").length, 3);
+      const firstImage = document.querySelector(".gallery-main img").src;
+      await act(async () => {
+        assert.ok((await fetch(firstImage)).ok, "Screenshot must be served by Django");
+      });
+      await act(async () => document.querySelector('[aria-label="Следующий скриншот"]').click());
+      assert.notEqual(document.querySelector(".gallery-main img").src, firstImage);
+      await act(async () => document.querySelector('[aria-label="Увеличить скриншот"]').click());
+      assert.ok(document.querySelector("dialog[open] .gallery-modal-image"));
+      await act(async () => document.querySelector('dialog [aria-label="Закрыть"]').click());
+      assert.equal(document.querySelector("dialog"), null);
+      assert.ok(document.querySelector(".game-requirements").textContent.includes("8 GB RAM"));
+      console.log("ACTION OK gallery, enlarged screenshot and server requirements");
       await act(async () => button("В корзину").click());
       await until(() => button("Убрать из корзины"), "Cart update did not render");
       snapshot = await json("studio/snapshot/");
@@ -113,6 +171,21 @@ try {
       const conversations = await json("chat/conversations/");
       const messages = await json(`chat/conversations/${conversations.results[0].id}/messages/`);
       assert.equal(messages.results[0].text, "Hello from integrated UI");
+      await act(async () => Simulate.change(input, { target: { value: "Other note for search" } }));
+      await act(async () => Simulate.submit(document.querySelector(".message-form")));
+      await until(() => document.querySelector('[role="log"]')?.textContent.includes("Other note for search"), "Second message not persisted");
+      const searchInput = document.querySelector('[aria-label="Поиск по переписке"]');
+      await act(async () => Simulate.change(searchInput, { target: { value: "HELLO FROM" } }));
+      assert.equal(document.querySelectorAll(".messages .message").length, 1);
+      await act(async () => document.querySelector(".messages .message-pin").click());
+      await until(() => document.querySelector(".messages .pinned-label"), "Pinned message did not update");
+      await act(async () => Simulate.change(searchInput, { target: { value: "no matching text" } }));
+      assert.equal(document.querySelectorAll(".messages .message").length, 0);
+      await act(async () => button("Сбросить").click());
+      await act(async () => button("Закреплённые (").click());
+      assert.equal(document.querySelectorAll(".messages .message").length, 1);
+      assert.ok(document.querySelector(".messages .message").textContent.includes("Hello from integrated UI"));
+      console.log("ACTION OK case-insensitive chat search and persistent shared pin");
       console.log("ACTION OK new UI message visible through existing chat API");
     }
     await act(async () => root.unmount());
@@ -154,10 +227,42 @@ try {
     await act(async () => root.unmount());
     root = null;
   }
+  root = createRoot(document.getElementById("root"));
+  await act(async () => root.render(React.createElement(MemoryRouter, { initialEntries: ["/"] }, React.createElement(App))));
+  await until(() => document.querySelector(".recently-viewed"), "Recent views did not persist across navigation");
+  assert.ok(document.querySelector(".recently-viewed").textContent.includes("Grand Theft Auto VI"));
+  await act(async () => button("Очистить историю").click());
+  await until(() => !document.querySelector(".recently-viewed"), "History clear did not persist");
+  snapshot = await json("studio/snapshot/");
+  assert.deepEqual(snapshot.state.recentViews[alice], []);
+  await act(async () => root.unmount());
+  root = null;
+  console.log("ACTION OK private recently viewed catalog and clear history");
+  await json("studio/account/", { mode: "logout" });
+  await json("studio/account/", { mode: "login", login: "owner", password: "Test-strong-pass-42" });
+  await json("catalog/games/gta-vi/", { is_preorder: false }, {}, "PATCH");
+  await json("catalog/games/gta-vi/", { title: "Grand Theft Auto VI" }, {}, "PATCH");
+  await json("studio/account/", { mode: "logout" });
+  await json("studio/account/", { mode: "login", login: "alice", password: "Test-strong-pass-42" });
+  snapshot = await json("studio/snapshot/");
+  assert.equal(snapshot.state.notifications.filter(n => n.category === "releases").length, 1);
+  assert.ok(!snapshot.games.find(g => g.id === "gta-vi").isPreorder);
+  root = createRoot(document.getElementById("root"));
+  await act(async () => root.render(React.createElement(MemoryRouter, { initialEntries: ["/notifications"] }, React.createElement(App))));
+  await until(() => button("предзаказ завершён"), "Release notification is missing from inbox");
+  await act(async () => button("предзаказ завершён").click());
+  await until(() => button("Отзывы"), "Release notification did not open the game");
+  await act(async () => button("Отзывы").click());
+  assert.ok(button("Сохранить отзыв"), "Released preorder must allow reviews");
+  await act(async () => root.unmount());
+  root = null;
+  console.log("ACTION OK one release notification after admin publication and notification navigation");
   await json("studio/account/", { mode: "logout" });
   await json("studio/account/", { mode: "login", login: "bob", password: "Test-strong-pass-42" });
   snapshot = await json("studio/snapshot/");
   assert.ok(snapshot.state.messages.some(m => m.text === "Hello from integrated UI" && m.to === bob));
+  assert.ok(snapshot.state.messages.find(m => m.text === "Hello from integrated UI").pinned);
+  assert.deepEqual(snapshot.state.recentViews, {});
   assert.equal(snapshot.state.orders.length, 0);
   console.log("ACTION OK second account receives message and cannot see buyer orders");
 } finally {

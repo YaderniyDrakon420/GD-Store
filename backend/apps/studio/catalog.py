@@ -15,8 +15,10 @@ def catalog(viewer=None):
         retained.update(Wishlist.objects.filter(user=viewer).values_list("game_id", flat=True))
         retained.update(OrderItem.objects.filter(Q(order__user=viewer) | Q(order__recipient=viewer)).values_list("game_id", flat=True))
         visible |= Q(pk__in=retained)
-    for game in Game.objects.filter(visible).annotate(review_count=Count("reviews"), positive_count=Count("reviews", filter=Q(reviews__is_recommended=True))).prefetch_related("genres", "tags", "developers").select_related("gamepresentation"):
+    for game in Game.objects.filter(visible).annotate(review_count=Count("reviews"), positive_count=Count("reviews", filter=Q(reviews__is_recommended=True))).prefetch_related("genres", "tags", "developers", "screenshots").select_related("gamepresentation", "requirements"):
         extra = game.gamepresentation.data if hasattr(game, "gamepresentation") else {}
+        requirements = ({key: getattr(game.requirements, key) for key in ["os", "cpu", "ram", "gpu", "storage", "notes"]}
+                        if hasattr(game, "requirements") else None)
         result.append({
             "id": game.slug, "title": game.title,
             "tagline": game.short_description, "description": game.description,
@@ -30,6 +32,8 @@ def catalog(viewer=None):
             "platforms": game.platforms, "officialUrl": game.official_url,
             "position": extra.get("position", 100),
             "developer": ", ".join(d.name for d in game.developers.all()),
+            "screenshots": [{"id": str(s.pk), "image": s.image.url} for s in sorted(game.screenshots.all(), key=lambda s: (s.order, s.pk)) if s.image],
+            "requirements": requirements,
             "image": game.cover_image.url if game.cover_image else extra.get("image", ""),
             "color": extra.get("color", "#18332e"),
             "rating": round(100 * game.positive_count / game.review_count) if game.review_count else None,

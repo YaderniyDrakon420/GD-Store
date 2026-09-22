@@ -357,6 +357,10 @@ export function GameCard({ game }) {
   );
 }
 export function Store() {
+  const { state, me, act } = useDemo();
+  const [allRecent, setAllRecent] = useState(false);
+  const recent = (state.recentViews?.[me?.id] || [])
+    .map((id) => games.find((game) => game.id === id && game.available !== false)).filter(Boolean);
   const [params, setParams] = useSearchParams();
   const search = params.get("search") || "";
   const [genre, setGenre] = useState("Все игры"),
@@ -498,6 +502,19 @@ export function Store() {
           />
         )}
       </section>
+      {!!recent.length && !search && (
+        <section className="recently-viewed" aria-label="Недавно просмотренные игры">
+          <div className="section-title">
+            <h2>Недавно просмотренные</h2>
+            <div className="actions">
+              {recent.length > 4 && <button className="btn" onClick={() => setAllRecent(!allRecent)}>{allRecent ? "Свернуть" : "Показать все"}</button>}
+              <button className="link-button" onClick={async () => await act({ type: "recent-clear" }, "История просмотров очищена")}>Очистить историю</button>
+            </div>
+          </div>
+          <div className="game-grid">{(allRecent ? recent : recent.slice(0, 4)).map((game) => <GameCard key={game.id} game={game} />)}</div>
+          <p className="fine space">Эту историю видите только вы. Сохраняем последние 12 игр.</p>
+        </section>
+      )}
       <section className="discovery-banner">
         <div>
           <p className="eyebrow">СОЗДАВАЙ БОЛЬШЕ</p>

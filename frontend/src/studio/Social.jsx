@@ -12,12 +12,16 @@ import { games } from "../server/catalog.mjs";
 import { Art, Avatar, Empty, Gate, Head, NotFound } from "./Studio";
 import { Modal, Author, date } from "./Personal";
 import Icon from "../components/Icon";
+import "./extras.css";
 export function Friends() {
   const { id } = useParams();
   const { state, me, act } = useDemo();
   const [tab, setTab] = useState("Друзья"),
     [search, setSearch] = useState(""),
-    [draft, setDraft] = useState("");
+    [draft, setDraft] = useState(""),
+    [messageSearch, setMessageSearch] = useState(""),
+    [pinnedOnly, setPinnedOnly] = useState(false),
+    [pinBusy, setPinBusy] = useState(false);
   const end = useRef(null);
   const nav = useNavigate();
   const my = state.friends.filter((f) => [f.from, f.to].includes(me?.id));
@@ -44,10 +48,22 @@ export function Friends() {
   );
   useEffect(() => {
     setDraft("");
+    setMessageSearch("");
+    setPinnedOnly(false);
   }, [id, state.active]);
+  const query = messageSearch.trim().toLocaleLowerCase();
+  const filteredMessages = messages.filter((m) => (!pinnedOnly || m.pinned) && m.text.toLocaleLowerCase().includes(query));
+  const pinCount = messages.filter((m) => m.pinned).length;
   useEffect(() => {
-    end.current?.scrollIntoView({ block: "nearest" });
-  }, [messages.length, id]);
+    if (!query && !pinnedOnly) end.current?.scrollIntoView({ block: "nearest" });
+  }, [messages.length, id, query, pinnedOnly]);
+  async function setPin(message) {
+    if (pinBusy) return;
+    setPinBusy(true);
+    try {
+      await act({ type: "message-pin", message: message.id, pinned: !message.pinned }, message.pinned ? "Сообщение откреплено" : "Сообщение закреплено для обоих участников");
+    } finally { setPinBusy(false); }
+  }
   return (
     <Gate>
       <Head
@@ -176,8 +192,8 @@ export function Friends() {
             )}
           </div>
           <p className="chat-demo-note">
-            Демопрофили можно переключать в настройках. Ответы не генерируются
-            автоматически.
+            Переписка сохраняется в аккаунте. Закреплённые сообщения видны обоим
+            участникам.
           </p>
         </aside>
         <section className="chat-panel">
@@ -220,6 +236,14 @@ export function Friends() {
               </div>
               {allowed ? (
                 <>
+                  <div className="chat-tools">
+                    <input type="search" aria-label="Поиск по переписке" placeholder="Найти сообщение…"
+                      value={messageSearch} onChange={(e) => setMessageSearch(e.target.value)} />
+                    <button className={"chip " + (pinnedOnly ? "active" : "")} aria-pressed={pinnedOnly}
+                      onClick={() => setPinnedOnly(!pinnedOnly)}>Закреплённые ({pinCount})</button>
+                    {(query || pinnedOnly) && <button className="link-button" onClick={() => { setMessageSearch(""); setPinnedOnly(false); }}>Сбросить</button>}
+                    <p className="fine">{query || pinnedOnly ? `Найдено: ${filteredMessages.length} из ${messages.length}. ` : ""}Закрепления видны обоим участникам.</p>
+                  </div>
                   <div
                     className="messages"
                     role="log"
@@ -228,15 +252,19 @@ export function Friends() {
                     <p className="chat-date">
                       Личная переписка · доступна участникам диалога
                     </p>
-                    {messages.map((m) => (
+                    {filteredMessages.map((m) => (
                       <div
                         className={
                           "message " + (m.from === me?.id ? "mine" : "")
                         }
                         key={m.id}
                       >
+                        {m.pinned && <span className="pinned-label">Закреплено</span>}
                         <p>{m.text}</p>
                         <ReportButton user={m.from} message={m.id} compact />
+                        <button className="link-button message-pin" disabled={pinBusy}
+                          aria-label={(m.pinned ? "Открепить сообщение: " : "Закрепить сообщение: ") + m.text.slice(0, 60)}
+                          onClick={() => setPin(m)}>{m.pinned ? "Открепить" : "Закрепить"}</button>
                         <small>
                           {date(m.at)} ·{" "}
                           {new Date(m.at).toLocaleTimeString("ru-RU", {
@@ -246,6 +274,7 @@ export function Friends() {
                         </small>
                       </div>
                     ))}
+                    {!!messages.length && !filteredMessages.length && <p className="muted">Сообщения не найдены. Измените запрос или сбросьте фильтр.</p>}
                     {!messages.length && (
                       <div className="conversation-start">
                         <Icon name="chat" size={35} />

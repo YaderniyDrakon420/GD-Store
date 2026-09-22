@@ -2,7 +2,7 @@ import uuid
 from decimal import Decimal
 
 from django.core.validators import MaxValueValidator, MinValueValidator
-from django.db import models
+from django.db import models, router, transaction
 
 
 class Genre(models.Model):
@@ -109,6 +109,12 @@ class Game(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
+    def save(self, *args, **kwargs):
+        # Catalog changes and release notifications must commit together.
+        using = kwargs.get("using") or router.db_for_write(type(self), instance=self)
+        with transaction.atomic(using=using):
+            return super().save(*args, **kwargs)
+
     @property
     def final_price(self):
         discount = Decimal(self.discount_percent) / Decimal("100")
@@ -157,6 +163,7 @@ class SystemRequirement(models.Model):
     ram = models.CharField(max_length=50, blank=True)
     gpu = models.CharField(max_length=200, blank=True)
     storage = models.CharField(max_length=50, blank=True)
+    notes = models.TextField(blank=True, verbose_name="Дополнительные требования")
 
     def __str__(self):
         return f"Requirements: {self.game.title}"

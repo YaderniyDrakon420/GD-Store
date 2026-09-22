@@ -13,7 +13,15 @@ from .snapshot import COSMETICS
 
 def personal_action(user, a):
     kind, uid = a["type"], str(user.pk)
-    if kind == "profile":
+    if kind in ("game-view", "recent-clear"):
+        row = bucket("recentViews", user)
+        if kind == "recent-clear":
+            row.data["value"] = []
+        else:
+            slug = get_game(a.get("game")).slug
+            row.data["value"] = [slug] + [value for value in row.data.get("value", []) if value != slug][:11]
+        save(row)
+    elif kind == "profile":
         p = profile(user)
         user.display_name = text(a.get("name"), 40)
         avatar = text(a.get("avatar", ""), 750000, required=False)
@@ -58,7 +66,7 @@ def personal_action(user, a):
                 raise ValidationError("Неизвестная настройка.")
             for key, value in values.items():
                 if key == "notifications":
-                    allowed = {"messages", "teams", "gifts", "sales", "invitations", "support", "community", "admin"}
+                    allowed = {"messages", "teams", "gifts", "sales", "releases", "invitations", "support", "community", "admin"}
                     if not isinstance(value, dict) or set(value) - allowed or any(type(v) is not bool for v in value.values()):
                         raise ValidationError("Неверные настройки уведомлений.")
                     p.preferences.setdefault(key, {}).update(value)

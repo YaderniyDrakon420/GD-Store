@@ -3,6 +3,7 @@ export const notificationKinds = {
   teams: "Командный чат",
   gifts: "Подарки",
   sales: "Скидки",
+  releases: "Выход предзаказанных игр",
   invitations: "Заявки и приглашения",
   support: "Ответы поддержки",
   community: "Ответы и события сообщества",
