@@ -61,7 +61,8 @@ def calculate(user, action, *, locked=False):
     if total > Decimal("99999999.99"):
         raise ValidationError("Сумма заказа слишком велика.")
     confirmed = {"user": str(user.pk), "recipient": str(recipient.pk), "promo": code,
-                 "items": [[str(r.pk), r.game.slug, str(r.game.final_price)] for r in rows],
+                 "items": [[str(r.pk), r.game.slug, str(r.game.final_price), r.game.is_preorder,
+                            r.game.release_date.isoformat() if r.game.release_date else None, r.game.platforms] for r in rows],
                  "subtotal": str(subtotal), "discount": str(discount), "total": str(total)}
     return recipient, rows, promo, confirmed
 
@@ -72,6 +73,7 @@ def quote(user, action):
     return {"recipient": str(recipient.pk), "subtotal": float(data["subtotal"]),
             "discount": float(data["discount"]), "total": float(data["total"]),
             "gift": recipient != user, "promo": promo.code if promo else "",
+            "preorders": [r.game.slug for r in rows if r.game.is_preorder],
             "testMode": True, "token": signing.dumps(data, salt=SALT, compress=True)}
 
 
@@ -110,10 +112,10 @@ def purchase(user, action):
     order = Order.objects.create(user=user, recipient=recipient if recipient != user else None,
                                  promo_code=promo, status=Order.STATUS_PAID,
                                  subtotal=current["subtotal"], discount_total=current["discount"], total=total)
-    OrderItem.objects.bulk_create([OrderItem(order=order, game=r.game, price_at_purchase=r.game.final_price) for r in rows])
+    OrderItem.objects.bulk_create([OrderItem(order=order, game=r.game, price_at_purchase=r.game.final_price, is_preorder=r.game.is_preorder) for r in rows])
     if promo:
         PromoCode.objects.filter(pk=promo.pk).update(times_used=F("times_used") + 1)
-    if method == "wallet":
+    if method == "wallet" and total > 0:
         wallet_change(user, -total, "Учебная покупка #" + str(order.pk)[:8], order)
     provider_id = "test_" + uuid.uuid4().hex
     payload = {"test_mode": True, "method": method, "real_money": "0.00"}
@@ -123,16 +125,17 @@ def purchase(user, action):
                                   status=Payment.STATUS_SUCCEEDED, amount=total, raw_payload=payload)
     LibraryEntry.objects.bulk_create([LibraryEntry(user=recipient, game=r.game) for r in rows])
     points = int(total // 10)
-    points_change(user, points, "Баллы за учебный заказ #" + str(order.pk)[:8], order)
+    if points:
+        points_change(user, points, "Баллы за учебный заказ #" + str(order.pk)[:8], order)
     create("orderMeta", user, order=str(order.pk), method=method, promo=current["promo"], pointsEarned=points)
     if recipient != user:
         create("gifts", user, **{"from": str(user.pk)}, to=str(recipient.pk),
                gameIds=[r.game.slug for r in rows], message=gift_message, opened=False, order=str(order.pk))
-        notify(recipient.pk, user, "Вам подарили игру", gift_message or "Игры уже в вашей библиотеке.", "/gifts")
+        notify(recipient.pk, user, "Вам подарили игру", gift_message or "Заказ в библиотеке. Предзаказы ожидают релиза.", "/gifts")
     CartItem.objects.filter(user=user, pk__in=[r.pk for r in rows]).delete()
     Wishlist.objects.filter(user=recipient, game_id__in=[r.game_id for r in rows]).delete()
     return {"id": str(order.pk), "total": float(total), "recipient": recipient.display_name or recipient.username,
-            "gift": recipient != user, "pointsEarned": points, "testMode": True, "realMoney": 0}
+            "gift": recipient != user, "preorders": [r.game.slug for r in rows if r.game.is_preorder], "pointsEarned": points, "testMode": True, "realMoney": 0}
 
 
 def commerce_action(user, action):

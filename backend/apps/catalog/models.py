@@ -1,7 +1,7 @@
 import uuid
 from decimal import Decimal
 
-from django.core.validators import MaxValueValidator
+from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
 
 
@@ -60,6 +60,7 @@ class Game(models.Model):
     price = models.DecimalField(
         max_digits=8,
         decimal_places=2,
+        validators=[MinValueValidator(Decimal("0.00"))],
     )
 
     discount_percent = models.PositiveSmallIntegerField(
@@ -71,6 +72,13 @@ class Game(models.Model):
         null=True,
         blank=True,
     )
+
+    is_preorder = models.BooleanField(
+        default=False, verbose_name="Предзаказ",
+        help_text="Запись в библиотеке ожидает релиза. Снимите флажок после выхода игры.",
+    )
+    platforms = models.CharField(max_length=200, blank=True, verbose_name="Платформы")
+    official_url = models.URLField(blank=True, verbose_name="Официальная страница")
 
     genres = models.ManyToManyField(
         Genre,
@@ -111,6 +119,10 @@ class Game(models.Model):
 
     class Meta:
         ordering = ["-created_at"]
+        constraints = [
+            models.CheckConstraint(check=models.Q(price__gte=0), name="game_price_nonnegative"),
+            models.CheckConstraint(check=models.Q(discount_percent__lte=100), name="game_discount_at_most_100"),
+        ]
 
     def __str__(self):
         return self.title

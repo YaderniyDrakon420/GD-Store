@@ -1,5 +1,5 @@
 from apps.catalog.models import Game
-from django.db.models import Q
+from django.db.models import Q, Count
 from apps.library.models import LibraryEntry
 from apps.store.models import CartItem, Wishlist, OrderItem
 
@@ -13,9 +13,9 @@ def catalog(viewer=None):
         retained = set(playtime)
         retained.update(CartItem.objects.filter(user=viewer).values_list("game_id", flat=True))
         retained.update(Wishlist.objects.filter(user=viewer).values_list("game_id", flat=True))
-        retained.update(OrderItem.objects.filter(order__user=viewer).values_list("game_id", flat=True))
+        retained.update(OrderItem.objects.filter(Q(order__user=viewer) | Q(order__recipient=viewer)).values_list("game_id", flat=True))
         visible |= Q(pk__in=retained)
-    for game in Game.objects.filter(visible).prefetch_related("genres", "tags", "developers").select_related("gamepresentation"):
+    for game in Game.objects.filter(visible).annotate(review_count=Count("reviews"), positive_count=Count("reviews", filter=Q(reviews__is_recommended=True))).prefetch_related("genres", "tags", "developers").select_related("gamepresentation"):
         extra = game.gamepresentation.data if hasattr(game, "gamepresentation") else {}
         result.append({
             "id": game.slug, "title": game.title,
@@ -25,11 +25,16 @@ def catalog(viewer=None):
             "price": float(game.price), "discount": game.discount_percent,
             "finalPrice": float(game.final_price),
             "available": game.is_published,
+            "isPreorder": game.is_preorder,
+            "releaseDate": game.release_date.isoformat() if game.release_date else None,
+            "platforms": game.platforms, "officialUrl": game.official_url,
+            "position": extra.get("position", 100),
             "developer": ", ".join(d.name for d in game.developers.all()),
-            "image": game.cover_image.url if game.cover_image else extra.get("image", "/art/orbital.png"),
+            "image": game.cover_image.url if game.cover_image else extra.get("image", ""),
             "color": extra.get("color", "#18332e"),
-            "rating": extra.get("rating", 0),
+            "rating": round(100 * game.positive_count / game.review_count) if game.review_count else None,
+            "reviewCount": game.review_count,
             "hours": round(playtime.get(game.pk, 0) / 60, 1), "achievements": 0,
-            "totalAchievements": extra.get("totalAchievements", 0),
+            "totalAchievements": 0,
         })
-    return sorted(result, key=lambda g: (g["id"] != "orbital", g["id"] != "ashen", g["id"]))
+    return sorted(result, key=lambda g: (g["position"], g["title"]))

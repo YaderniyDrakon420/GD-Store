@@ -113,9 +113,9 @@ export function Game() {
               </div>
               <h3>Об этой витрине</h3>
               <p>
-                Это вымышленная игра для демонстрации интерфейса GD Store.
-                Обложка — оригинальный концепт. Реального игрового клиента и
-                покупки здесь нет.
+                GD Store — учебный магазин. Указанные суммы используются только
+                для тестовых заказов. Реальные деньги не списываются, лицензии,
+                игровые ключи и клиент игры не выдаются.
               </p>
               <dl className="specs">
                 <dt>Разработчик</dt>
@@ -123,28 +123,32 @@ export function Game() {
                 <dt>Жанр</dt>
                 <dd>{g.genre}</dd>
                 <dt>Платформа</dt>
-                <dd>ПК · концепт</dd>
+                <dd>{g.platforms || "Не указана"}</dd>
+                <dt>Статус</dt>
+                <dd>{g.isPreorder ? "Предзаказ · ожидает релиза" : "Вышла"}</dd>
+                {g.releaseDate && <><dt>Дата релиза</dt><dd>{new Date(g.releaseDate + "T12:00:00").toLocaleDateString("ru-RU")}</dd></>}
+                {g.officialUrl && <><dt>Подробнее</dt><dd><a href={g.officialUrl} target="_blank" rel="noreferrer">Официальная страница ↗</a></dd></>}
               </dl>
             </div>
           ) : tab === "Достижения" ? (
             <div className="panel">
               <h2>Коллекция достижений</h2>
-              <p className="muted space">Демонстрационная витрина прогресса</p>
+              <p className="muted space">Интеграция с игровыми достижениями не подключена</p>
               <Achievements game={g} owned={false} />
             </div>
           ) : (
             <div className="panel">
               <h2>Отзывы игроков</h2>
               <div className="review-score">
-                <strong>{g.rating}%</strong>
+                <strong>{g.rating == null ? "—" : `${g.rating}%`}</strong>
                 <span>
                   Положительные
                   <br />
-                  <small>Демонстрационная оценка</small>
+                  <small>{g.reviewCount || 0} отзывов в GD Store</small>
                 </span>
               </div>
               <ReviewList game={g.id} />
-              {owned ? (
+              {owned && !g.isPreorder ? (
                 <form
                   className="form-stack"
                   onSubmit={async (e) => {
@@ -182,7 +186,7 @@ export function Game() {
                 </form>
               ) : (
                 <p className="muted">
-                  Добавьте игру в библиотеку, чтобы оставить отзыв.
+                  {g.isPreorder ? "Отзывы станут доступны после релиза." : "Добавьте игру в библиотеку, чтобы оставить отзыв."}
                 </p>
               )}
             </div>
@@ -203,7 +207,7 @@ export function Game() {
           </div>
           {owned ? (
             <Link className="btn primary" to="/library">
-              <Icon name="library" />В библиотеке
+              <Icon name="library" />{g.isPreorder ? "Предзаказ в библиотеке" : "В библиотеке"}
             </Link>
           ) : (
             <button
@@ -217,7 +221,7 @@ export function Game() {
               }
             >
               <Icon name="cart" />
-              {cart ? "Убрать из корзины" : g.available === false ? "Снято с продажи" : "В корзину"}
+              {cart ? "Убрать из корзины" : g.available === false ? "Снято с продажи" : g.isPreorder ? "Предзаказ в корзину" : "В корзину"}
             </button>
           )}
           <button
@@ -238,27 +242,13 @@ export function Game() {
     </>
   );
 }
-export function Achievements({ owned }) {
+export function Achievements() {
   return (
     <div className="achievements">
-      {["Первый шаг", "Картограф", "Новый горизонт", "Легенда Элиона"].map(
-        (a, i) => (
-          <div
-            className={"achievement " + (owned && i < 2 ? "unlocked" : "")}
-            key={a}
-          >
-            <span>
-              <Icon name="trophy" size={25} />
-            </span>
-            <div>
-              <strong>{a}</strong>
-              <small>
-                {owned && i < 2 ? "Открыто · демопрогресс" : "Пока не открыто"}
-              </small>
-            </div>
-          </div>
-        ),
-      )}
+      <div className="achievement">
+        <span><Icon name="trophy" size={25} /></span>
+        <div><strong>Нет данных о достижениях</strong><small>GD Store не получает игровой прогресс из Steam или консолей.</small></div>
+      </div>
     </div>
   );
 }
@@ -352,11 +342,8 @@ export function Collection({ kind }) {
             <div key={g.id}>
               <GameCard game={g} />
               <div className="library-meta">
-                <span>{g.hours} ч. в игре</span>
-                <span>
-                  {g.achievements} /{" "}
-                  {g.totalAchievements}
-                </span>
+                <span>{g.isPreorder ? "Предзаказ · ожидает релиза" : "Учебная библиотека"}</span>
+                <span>{g.isPreorder && g.releaseDate ? new Date(g.releaseDate + "T12:00:00").toLocaleDateString("ru-RU") : "Без игрового клиента"}</span>
               </div>
             </div>
           ))}
@@ -372,7 +359,7 @@ export function Collection({ kind }) {
                 <Link to={"/game/" + g.id}>
                   <h3>{g.title}</h3>
                 </Link>
-                <p className="muted">{g.available === false ? "Снято с продажи — удалите из корзины" : g.genre}</p>
+                <p className="muted">{g.available === false ? "Снято с продажи — удалите из корзины" : g.isPreorder ? "Предзаказ · " + g.platforms : g.genre}</p>
               </div>
               <strong>{money(price(g))}</strong>
               {kind === "wishlist" && (
@@ -489,7 +476,7 @@ export function Profile() {
           <p className="online-label">
             <i className={"presence " + user.status} />{" "}
             {user.status === "playing"
-              ? "В игре · ORBITAL"
+              ? "В игре"
               : user.status === "online"
                 ? "В сети"
                 : "Не в сети"}
@@ -651,7 +638,7 @@ export function Profile() {
   );
 }
 export function ProfileForm({ user, onSave }) {
-  const [values, setValues] = useState(user);
+  const [values, setValues] = useState(() => ({ ...user, cover: user.cover || games.find((g) => g.available !== false)?.id || "" }));
   const [uploadError, setUploadError] = useState("");
   const field = (k, v) => setValues({ ...values, [k]: v });
   return (
@@ -746,10 +733,10 @@ export function ProfileForm({ user, onSave }) {
       <label>
         Обложка профиля
         <select
-          value={values.cover || "orbital"}
+          value={values.cover || ""}
           onChange={(e) => field("cover", e.target.value)}
         >
-          {games.slice(0, 3).map((g) => (
+          {games.filter((g) => g.available !== false || g.id === values.cover).map((g) => (
             <option value={g.id} key={g.id}>
               {g.title}
             </option>

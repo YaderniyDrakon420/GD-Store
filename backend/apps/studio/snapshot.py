@@ -79,6 +79,8 @@ def snapshot(viewer):
         state["wishlist"][uid] = list(Wishlist.objects.filter(user=viewer).values_list("game__slug", flat=True))
         for order in Order.objects.filter(user=viewer).prefetch_related("items__game"):
             state["orders"].append({"id": str(order.pk), "user": uid,
+                "preorders": [i.game.slug for i in order.items.all() if i.is_preorder],
+                "awaitingRelease": [i.game.slug for i in order.items.all() if i.game.is_preorder],
                 "games": [i.game.slug for i in order.items.all()], "subtotal": float(order.subtotal),
                 "discount": float(order.discount_total), "total": float(order.total),
                 "recipient": str(order.recipient_id) if order.recipient_id else uid,

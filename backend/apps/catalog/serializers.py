@@ -72,6 +72,9 @@ class GameListSerializer(serializers.ModelSerializer):
             "genres",
             "tags",
             "release_date",
+            "is_preorder",
+            "platforms",
+            "official_url",
         ]
 
 
@@ -97,6 +100,9 @@ class GameDetailSerializer(serializers.ModelSerializer):
             "discount_percent",
             "final_price",
             "release_date",
+            "is_preorder",
+            "platforms",
+            "official_url",
             "genres",
             "tags",
             "developers",
@@ -122,6 +128,9 @@ class GameWriteSerializer(serializers.ModelSerializer):
             "price",
             "discount_percent",
             "release_date",
+            "is_preorder",
+            "platforms",
+            "official_url",
             "genres",
             "tags",
             "developers",

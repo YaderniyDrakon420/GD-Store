@@ -26,29 +26,29 @@
   {
     "id": "banner-orbit",
     "type": "banner",
-    "name": "Кольца Элиона",
-    "description": "Целый мир над вашим профилем",
+    "name": "Лос-Сантос",
+    "description": "Обложка для вашего профиля",
     "price": 300,
-    "image": "/art/orbital.png",
-    "game": "orbital"
+    "image": "/art/gta-v.jpg",
+    "game": "gta-v"
   },
   {
     "id": "banner-ash",
     "type": "banner",
-    "name": "Багровый рассвет",
-    "description": "История, написанная пеплом",
+    "name": "Битва Древних",
+    "description": "Обложка для вашего профиля",
     "price": 300,
-    "image": "/art/ashen.png",
-    "game": "ashen"
+    "image": "/art/dota2.jpg",
+    "game": "dota2"
   },
   {
     "id": "banner-night",
     "type": "banner",
-    "name": "После полуночи",
-    "description": "Город, который не засыпает",
+    "name": "Решающий раунд",
+    "description": "Обложка для вашего профиля",
     "price": 320,
-    "image": "/art/velocity.png",
-    "game": "velocity"
+    "image": "/art/cs2.jpg",
+    "game": "cs2"
   },
   {
     "id": "frame-teal",

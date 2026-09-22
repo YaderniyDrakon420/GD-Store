@@ -40,11 +40,12 @@ export function Compare() {
   const rows = [
     ["Цена", (g) => money(price(g))],
     ["Скидка", (g) => (g.discount ? "−" + g.discount + "%" : "Без скидки")],
-    ["Оценка игроков", (g) => g.rating + "% положительных"],
+    ["Оценка игроков", (g) => g.rating == null ? "Нет отзывов" : g.rating + "% положительных"],
     ["Жанр", (g) => g.genre],
     ["Игровые особенности", (g) => g.tags.join(" · ")],
     ["Разработчик", (g) => g.developer],
-    ["Достижения", (g) => g.totalAchievements],
+    ["Платформы", (g) => g.platforms || "Не указаны"],
+    ["Статус", (g) => g.isPreorder ? "Предзаказ" : "Вышла"],
   ];
   return (
     <Gate>
@@ -144,7 +145,7 @@ export function Compare() {
         />
       )}
       <p className="fine space">
-        Оценки и характеристики — демонстрационные данные вымышленных игр.
+        Цены служат для учебных заказов. Оценки рассчитаны по отзывам пользователей GD Store.
       </p>
     </Gate>
   );
@@ -155,7 +156,7 @@ export function Discover() {
     [budget, setBudget] = useState(1200),
     [excludeOwned, setExcludeOwned] = useState(true),
     [picked, setPicked] = useState(null);
-  const candidates = pickGames(games.filter((g) => g.available !== false), {
+  const candidates = pickGames(games.filter((g) => g.available !== false && !g.isPreorder), {
     mood,
     budget,
     owned: excludeOwned ? state.library[me?.id] || [] : [],

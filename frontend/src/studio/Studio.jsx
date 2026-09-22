@@ -163,7 +163,7 @@ export function Shell() {
                   {u.name}
                   <small className={u.status === "playing" ? "accent" : ""}>
                     {u.status === "playing"
-                      ? "В игре · ORBITAL"
+                      ? "В игре"
                       : u.status === "online"
                         ? "В сети"
                         : "Не в сети"}
@@ -286,7 +286,7 @@ export function Shell() {
         </main>
         <footer>
           <span>GD STORE / PLAY YOUR WAY</span>
-          <span>Независимый дизайн. Вымышленные игры для демонстрации.</span>
+          <span>Учебный магазин. Без реальных списаний и выдачи игровых ключей.</span>
           <button
             className="link-button"
             onClick={async () => {
@@ -340,13 +340,13 @@ export function GameCard({ game }) {
       <div className="card-info">
         <p className="micro">
           {game.genre}
-          <span className="rating">● {game.rating}%</span>
+          <span className="rating">{game.rating == null ? "Нет отзывов" : `● ${game.rating}%`}</span>
         </p>
         <Link to={"/game/" + game.id}>
           <h3>{game.title}</h3>
         </Link>
         <div className="card-bottom">
-          <span>{game.tags[0]}</span>
+          <span>{game.isPreorder ? "Предзаказ" : game.tags[0]}</span>
           <div>
             {game.discount > 0 && <del>{money(game.price)}</del>}
             <strong>{money(price(game))}</strong>
@@ -398,19 +398,15 @@ export function Store() {
               <span className="pill">
                 <i /> В ФОКУСЕ
               </span>
-              <p className="hero-kicker">NORTHSTAR STUDIO PRESENTS</p>
+              <p className="hero-kicker">{hero.developer}</p>
               <h2>{hero.title}</h2>
-              <p>
-                Там, где заканчивается карта,
-                <br />
-                начинается твоя история.
-              </p>
+              <p>{hero.tagline}</p>
               <div className="hero-bottom">
                 <span className="btn primary">
                   Исследовать игру <Icon name="arrow" size={18} />
                 </span>
                 <div>
-                  <span className="discount">−{hero.discount}%</span>
+                  {hero.discount > 0 && <span className="discount">−{hero.discount}%</span>}
                   <strong>{money(price(hero))}</strong>
                 </div>
               </div>
@@ -423,7 +419,7 @@ export function Store() {
             {featured[1] && <Link className="mini-feature" to={"/game/" + featured[1].id}>
               <Art game={featured[1]} />
               <div>
-                <span className="micro">ВЫБОР СООБЩЕСТВА</span>
+                <span className="micro">{featured[1].isPreorder ? "ПРЕДЗАКАЗ" : "В КАТАЛОГЕ"}</span>
                 <h2>
                   {featured[1].title}
                 </h2>
@@ -475,15 +471,7 @@ export function Store() {
           </div>
         </div>
         <div className="genre-row">
-          {[
-            "Все игры",
-            "Приключения",
-            "RPG",
-            "Гонки",
-            "Инди",
-            "Стратегии",
-            "Экшен",
-          ].map((g) => (
+          {["Все игры", ...new Set(featured.map((g) => g.genre))].map((g) => (
             <button
               className={"chip " + (genre === g ? "active" : "")}
               onClick={() => setGenre(g)}

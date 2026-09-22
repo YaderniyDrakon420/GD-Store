@@ -122,7 +122,7 @@ class OrderItemSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = OrderItem
-        fields = ["game", "price_at_purchase"]
+        fields = ["game", "price_at_purchase", "is_preorder"]
 
 
 class OrderSerializer(serializers.ModelSerializer):

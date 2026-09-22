@@ -73,11 +73,13 @@ class GameAdmin(admin.ModelAdmin):
         "discount_percent",
         "final_price_display",
         "is_published",
+        "is_preorder",
         "release_date",
     ]
 
     list_filter = [
         "is_published",
+        "is_preorder",
         "genres",
         "tags",
     ]

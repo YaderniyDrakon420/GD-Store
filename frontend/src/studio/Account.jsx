@@ -161,7 +161,7 @@ export function Orders() {
             <span className="pill accent">
               {o.status !== "paid" ? ({pending: "Ожидает оплаты", cancelled: "Отменён", refunded: "Возвращён", failed: "Ошибка оплаты", expired: "Истёк"}[o.status] || o.status) : o.recipient && o.recipient !== o.user
                 ? "Подарок отправлен"
-                : "В библиотеке"}
+                : o.awaitingRelease?.length ? "Предзаказ · ожидает релиза" : "В библиотеке"}
             </span>
           </div>
           {o.recipient && o.recipient !== o.user && (
@@ -183,7 +183,7 @@ export function Orders() {
           <div className="order-total">
             <span>Демонстрационная сумма</span>
             <strong>{money(o.total)}</strong>
-            <small className="accent">＋{o.pointsEarned || 0} демобаллов</small>
+            <small className="accent">{o.status === "refunded" ? "Баллы возвращены" : `＋${o.pointsEarned || 0} демобаллов`}</small>
           </div>
           {["paid", "pending"].includes(o.status) && <button className="btn space" onClick={() => setConfirmOrder(o)}>{o.status === "paid" ? "Вернуть учебную покупку" : "Отменить заказ"}</button>}
         </section>

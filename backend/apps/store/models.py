@@ -135,6 +135,7 @@ class OrderItem(models.Model):
     order = models.ForeignKey(Order, related_name="items", on_delete=models.CASCADE)
     game = models.ForeignKey(Game, on_delete=models.PROTECT)
     price_at_purchase = models.DecimalField(max_digits=8, decimal_places=2)
+    is_preorder = models.BooleanField(default=False)
 
     class Meta:
         unique_together = ("order", "game")

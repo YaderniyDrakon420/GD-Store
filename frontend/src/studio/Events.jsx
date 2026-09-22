@@ -287,7 +287,7 @@ function localDate(value) {
 function EventForm({ initial, onSave }) {
   const { state, me } = useDemo();
   const [title, setTitle] = useState(initial.title || ""),
-    [game, setGame] = useState(initial.game || "orbital"),
+    [game, setGame] = useState(initial.game || games.find((g) => g.available !== false && !g.isPreorder)?.id || ""),
     [date, setDate] = useState(localDate(initial.startsAt)),
     [description, setDescription] = useState(initial.description || ""),
     [invitees, setInvitees] = useState(initial.invitees || []);

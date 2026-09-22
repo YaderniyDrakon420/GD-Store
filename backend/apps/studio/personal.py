@@ -32,7 +32,13 @@ def personal_action(user, a):
         color = a.get("color", "#78a9a3")
         if not isinstance(color, str) or not re.fullmatch(r"#[0-9a-fA-F]{6}", color):
             raise ValidationError("Неверный цвет профиля.")
-        cover = get_game(a.get("cover", "orbital")).slug
+        from apps.catalog.models import Game
+        requested_cover = a.get("cover")
+        if requested_cover:
+            # An existing retired cover remains valid for its owner.
+            cover = requested_cover if requested_cover == p.appearance.get("cover") else get_game(requested_cover).slug
+        else:
+            cover = p.appearance.get("cover") or Game.objects.filter(is_published=True).order_by("slug").values_list("slug", flat=True).first() or ""
         if avatar != p.appearance.get("avatar"):
             p.appearance["cosmeticAvatar"] = ""
         if cover != p.appearance.get("cover"):

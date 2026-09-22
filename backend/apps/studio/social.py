@@ -135,6 +135,8 @@ def social_action(user, a):
     elif kind in ("review", "review-vote"):
         if kind == "review":
             game = get_game(a.get("game"))
+            if game.is_preorder:
+                raise ValidationError("Отзывы станут доступны после релиза игры.")
             entry = LibraryEntry.objects.filter(user=user, game=game).first()
             if not entry:
                 raise PermissionDenied("Отзыв можно оставить только на игру из своей библиотеки.")

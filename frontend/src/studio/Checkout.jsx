@@ -26,7 +26,7 @@ export default function Checkout() {
   const items = games.filter((g) => ids.includes(g.id));
   const [calculation, setCalculation] = useState(null);
   const [busy, setBusy] = useState(false);
-  const quoteKey = JSON.stringify([me?.id, recipient, promo, items.map((g) => [g.id, g.finalPrice]), state.paymentTestMode]);
+  const quoteKey = JSON.stringify([me?.id, recipient, promo, items.map((g) => [g.id, g.finalPrice, g.isPreorder, g.releaseDate, g.platforms]), state.paymentTestMode]);
   const quote = calculation?.key === quoteKey ? calculation.quote : null;
   const quoteError = calculation?.key === quoteKey ? calculation.error : "Рассчитываем сумму на сервере…";
   useEffect(() => {
@@ -96,15 +96,16 @@ export default function Checkout() {
         </span>
         <p className="eyebrow">НОВОЕ ПРИКЛЮЧЕНИЕ УЖЕ ЖДЁТ</p>
         <h1>
-          {receipt.gift ? "Подарок отправлен" : "Добро пожаловать в новый мир"}
+          {receipt.gift ? "Подарок отправлен" : receipt.preorders?.length ? "Предзаказ оформлен" : "Заказ оформлен"}
         </h1>
         <p>
           {receipt.gift
             ? "Игры появились в библиотеке " + receipt.recipient + "."
             : "Игры уже в вашей библиотеке."}
         </p>
+        {!!receipt.preorders?.length && <p>Предзаказы отмечены в библиотеке и ожидают релиза. Это учебный заказ без выдачи ключа.</p>}
         <p className="points-reward">
-          ＋{purchasePoints(receipt.total)} демобаллов начислено вашему профилю
+          ＋{receipt.pointsEarned || 0} демобаллов начислено вашему профилю
         </p>
         <div className="receipt">
           <div>
@@ -375,7 +376,7 @@ export default function Checkout() {
                   </div>
                   <span>
                     {g.title}
-                    <small>{g.genre}</small>
+                    <small>{g.isPreorder ? "Предзаказ · " + g.platforms : g.genre}</small>
                   </span>
                 </div>
               ))}
@@ -440,7 +441,7 @@ export default function Checkout() {
               </p>
             )}
             <button className="btn primary pay-submit" disabled={!quote || busy || !state.paymentTestMode}>
-              {busy ? "Оформляем…" : recipient ? "Отправить демоподарок" : "Завершить демопокупку"}
+              {busy ? "Оформляем…" : recipient ? "Отправить демоподарок" : items.some((g) => g.isPreorder) ? "Оформить учебный предзаказ" : quote?.total === 0 ? "Добавить бесплатно" : "Завершить демопокупку"}
               <Icon name="arrow" />
             </button>
             <p className="payment-footnote">

@@ -108,7 +108,7 @@ export function Friends() {
                       <small>
                         <i className={"presence " + u.status} />{" "}
                         {u.status === "playing"
-                          ? "В игре · ORBITAL"
+                          ? "В игре"
                           : u.status === "online"
                             ? "В сети"
                             : "Не в сети"}
@@ -316,7 +316,7 @@ export function GameSelect({ value, onChange, all = false }) {
       onChange={(e) => onChange(e.target.value)}
     >
       {all && <option value="">Все игры</option>}
-      {games.map((g) => (
+      {games.filter((g) => g.available !== false || g.id === value).map((g) => (
         <option key={g.id} value={g.id}>
           {g.title}
         </option>
@@ -810,7 +810,7 @@ function ModForm({ onSave, initial }) {
     initial || {
       title: "",
       description: "",
-      game: "orbital",
+      game: games.find((g) => g.available !== false && !g.isPreorder)?.id || "",
       category: "Визуал",
       version: "1.0",
       fileName: "",

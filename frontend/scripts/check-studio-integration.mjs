@@ -73,11 +73,12 @@ try {
   let snapshot = await json("studio/snapshot/");
   const alice = snapshot.state.active;
   assert.ok(alice, "Login did not establish a session");
+  assert.deepEqual(snapshot.games.map(g => g.id), ["gta-v", "gta-vi", "cs2", "dota2"]);
   const bob = snapshot.state.users.find(u => u.handle === "bob").id;
   await json("studio/commands/", { type: "wallet-topup", amount: 1000 }, { "Idempotency-Key": crypto.randomUUID(), "X-Store-User": alice });
   server = await createServer({ server: { middlewareMode: true }, appType: "custom", optimizeDeps: { noDiscovery: true, include: [] } });
   const { default: App } = await server.ssrLoadModule("/src/App.jsx");
-  const routes = ["/", "/game/orbital", "/profile", "/library", "/cart", "/checkout", "/orders", "/friends", "/messages/" + bob,
+  const routes = ["/", "/game/gta-v", "/profile", "/library", "/cart", "/checkout", "/orders", "/friends", "/messages/" + bob,
     "/settings", "/compare", "/discover", "/community", "/workshop", "/wallet", "/support", "/events", "/teammates", "/notifications", "/collections"];
   for (const route of routes) {
     root = createRoot(document.getElementById("root"));
@@ -85,11 +86,11 @@ try {
     await until(() => document.querySelector("main"), "Route did not load: " + route);
     assert.ok(!document.body.textContent.includes("Сервер недоступен"), "Network failure: " + route);
     console.log("RENDER OK", route);
-    if (route === "/game/orbital") {
+    if (route === "/game/gta-v") {
       await act(async () => button("В корзину").click());
       await until(() => button("Убрать из корзины"), "Cart update did not render");
       snapshot = await json("studio/snapshot/");
-      assert.deepEqual(snapshot.state.cart[alice], ["orbital"]);
+      assert.deepEqual(snapshot.state.cart[alice], ["gta-v"]);
       console.log("ACTION OK persisted cart");
     }
     if (route === "/checkout") {
@@ -99,8 +100,8 @@ try {
       await until(() => document.querySelector(".payment-success"), "Server purchase did not finish");
       snapshot = await json("studio/snapshot/");
       assert.equal(snapshot.state.orders[0].status, "paid");
-      assert.ok(snapshot.state.library[alice].includes("orbital"));
-      assert.equal(snapshot.state.users.find(u => u.id === alice).wallet, 415.65);
+      assert.ok(snapshot.state.library[alice].includes("gta-v"));
+      assert.equal(snapshot.state.users.find(u => u.id === alice).wallet, 401);
       console.log("ACTION OK educational purchase and wallet debit");
     }
     if (route.startsWith("/messages/")) {
@@ -114,6 +115,42 @@ try {
       assert.equal(messages.results[0].text, "Hello from integrated UI");
       console.log("ACTION OK new UI message visible through existing chat API");
     }
+    await act(async () => root.unmount());
+    root = null;
+  }
+  const command = body => json("studio/commands/", body, { "Idempotency-Key": crypto.randomUUID(), "X-Store-User": alice });
+  for (const scenario of [
+    { slugs: ["cs2", "dota2"], label: "Добавить бесплатно", total: 0, preorder: false },
+    { slugs: ["gta-vi"], label: "Оформить учебный предзаказ", total: 2999, preorder: true },
+  ]) {
+    for (const game of scenario.slugs) await command({ type: "cart", game });
+    root = createRoot(document.getElementById("root"));
+    await act(async () => root.render(React.createElement(MemoryRouter, { initialEntries: ["/checkout"] }, React.createElement(App))));
+    await until(() => button("Быстрый демозаказ"), "Checkout not loaded");
+    await act(async () => button("Быстрый демозаказ").click());
+    await until(() => button(scenario.label) && !button(scenario.label).disabled, "Correct checkout label missing");
+    await act(async () => Simulate.submit(document.querySelector(".checkout-grid")));
+    await until(() => document.querySelector(".payment-success"), "New catalog purchase failed");
+    assert.ok(document.body.textContent.includes(scenario.preorder ? "Предзаказ оформлен" : "Заказ оформлен"));
+    snapshot = await json("studio/snapshot/");
+    assert.equal(snapshot.state.orders[0].total, scenario.total);
+    assert.deepEqual(snapshot.state.orders[0].preorders, scenario.preorder ? ["gta-vi"] : []);
+    assert.equal(snapshot.state.users.find(u => u.id === alice).wallet, 401);
+    for (const slug of scenario.slugs) assert.ok(snapshot.state.library[alice].includes(slug));
+    console.log("ACTION OK", scenario.preorder ? "preorder receipt and reservation" : "free games without payment");
+    await act(async () => root.unmount());
+    root = null;
+  }
+  for (const route of ["/library", "/game/gta-vi", "/orders"]) {
+    root = createRoot(document.getElementById("root"));
+    await act(async () => root.render(React.createElement(MemoryRouter, { initialEntries: [route] }, React.createElement(App))));
+    await until(() => document.querySelector("main")?.textContent.includes("Предзаказ"), "Preorder marker missing: " + route);
+    if (route === "/game/gta-vi") {
+      await act(async () => button("Отзывы").click());
+      assert.ok(document.body.textContent.includes("Отзывы станут доступны после релиза"));
+      assert.equal(button("Сохранить отзыв"), undefined);
+    }
+    console.log("RENDER OK preorder", route);
     await act(async () => root.unmount());
     root = null;
   }

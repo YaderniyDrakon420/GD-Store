@@ -232,6 +232,7 @@ class CartViewSet(viewsets.ModelViewSet):
                     OrderItem(
                         order=order,
                         game=item.game,
+                        is_preorder=item.game.is_preorder,
                         price_at_purchase=(
                             item.game.final_price.quantize(
                                 MONEY_STEP

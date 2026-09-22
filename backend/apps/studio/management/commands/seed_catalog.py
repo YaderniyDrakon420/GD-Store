@@ -11,20 +11,25 @@ from apps.studio.models import GamePresentation
 
 
 class Command(BaseCommand):
-    help = "Create the six fictional catalog games without overwriting existing data. No user/password seeds."
+    help = "Install GTA V, GTA VI preorder, CS2 and Dota 2; retire the six legacy demo games. Preserve admin edits."
 
     @transaction.atomic
     def handle(self, *args, **options):
         rows = json.loads((Path(__file__).parents[2] / "catalog_seed.json").read_text(encoding="utf-8"))
+        retired = Game.objects.filter(slug__in=[
+            "orbital", "ashen", "velocity", "echoes", "hollow", "nightshift",
+        ], is_published=True).update(is_published=False)
         added = 0
         for row in rows:
             game, created = Game.objects.get_or_create(slug=row["id"], defaults={
                 "title": row["title"], "short_description": row["tagline"],
                 "description": row["description"], "price": row["price"],
                 "discount_percent": row["discount"], "is_published": True,
+                "is_preorder": row["isPreorder"], "release_date": row["releaseDate"],
+                "platforms": row["platforms"], "official_url": row["officialUrl"],
             })
             GamePresentation.objects.get_or_create(game=game, defaults={"data": {
-                key: row[key] for key in ["image", "color", "rating", "totalAchievements"]
+                key: row[key] for key in ["image", "color", "position"]
             }})
             if not created:
                 continue
@@ -39,4 +44,4 @@ class Command(BaseCommand):
                 with image.open("rb") as handle:
                     game.cover_image.save(image.name, File(handle))
         PromoCode.objects.get_or_create(code="PLAY10", defaults={"discount_percent": 10, "is_active": True})
-        self.stdout.write(self.style.SUCCESS(f"Created {added} games. Existing games were preserved."))
+        self.stdout.write(self.style.SUCCESS(f"Created {added} games; retired {retired} legacy games. Existing game edits and order history preserved."))

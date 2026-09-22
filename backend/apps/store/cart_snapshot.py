@@ -12,7 +12,8 @@ def snapshot(user_id, beneficiary_id, items):
     owned = set(LibraryEntry.objects.filter(user_id=beneficiary_id,
         game_id__in=[i.game_id for i in items]).values_list("game_id", flat=True))
     rows = sorted((str(i.pk), str(i.game_id), str(i.game.final_price),
-                   i.game.is_published, i.game_id in owned) for i in items)
+                   i.game.is_published, i.game_id in owned, i.game.is_preorder,
+                   str(i.game.release_date), i.game.platforms) for i in items)
     digest = hashlib.sha256(json.dumps(rows, separators=(",", ":")).encode()).hexdigest()
     return {"user": str(user_id), "beneficiary": str(beneficiary_id), "cart": digest}, owned
 

@@ -34,6 +34,8 @@ class QuoteView(APIView):
     throttle_classes = [MutationThrottle]
 
     def post(self, request):
+        if not isinstance(request.data, dict):
+            raise ValidationError("Передайте объект расчёта заказа.")
         if request.headers.get("X-Store-User") and request.headers["X-Store-User"] != str(request.user.pk):
             raise PermissionDenied("Аккаунт изменился. Обновите страницу.")
         return Response(quote(request.user, request.data))
