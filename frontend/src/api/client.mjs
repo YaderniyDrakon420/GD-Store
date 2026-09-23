@@ -1,4 +1,5 @@
-const base = import.meta.env?.VITE_API_BASE_URL || "/api/v1/";
+const rawBase = import.meta.env?.VITE_API_URL || import.meta.env?.VITE_API_BASE_URL || "https://gd-store-production.up.railway.app/api/v1/";
+const base = rawBase.endsWith("/") ? rawBase : `${rawBase}/`;
 let tokens = null;
 try {
   tokens = JSON.parse(sessionStorage.getItem("gd-api-session") || "null");
