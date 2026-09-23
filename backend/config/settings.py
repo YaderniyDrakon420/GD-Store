@@ -264,6 +264,11 @@ CORS_ALLOWED_ORIGINS = [
     if origin.strip()
 ]
 
+# Cookies are sent only to explicitly allowed frontend origins. Never use '*'.
+from corsheaders.defaults import default_headers
+CORS_ALLOW_CREDENTIALS = True
+CORS_ALLOW_HEADERS = (*default_headers, "idempotency-key", "x-store-user")
+
 
 # Используется существующим PaymentWebhookView.
 PAYMENT_WEBHOOK_SECRET = os.environ.get(
@@ -284,10 +289,15 @@ PRIVATE_UPLOAD_ROOT = Path(os.environ.get("PRIVATE_UPLOAD_ROOT", str(BASE_DIR / 
 MAX_WORKSHOP_UPLOAD_BYTES = 10 * 1024 * 1024
 DATA_UPLOAD_MAX_MEMORY_SIZE = 2 * 1024 * 1024
 SESSION_COOKIE_HTTPONLY = True
-SESSION_COOKIE_SAMESITE = "Lax"
+SESSION_COOKIE_SAMESITE = os.environ.get("SESSION_COOKIE_SAMESITE", "Lax")
+CSRF_COOKIE_SAMESITE = SESSION_COOKIE_SAMESITE
 SESSION_COOKIE_SECURE = not DEBUG
 CSRF_COOKIE_SECURE = not DEBUG
 CSRF_TRUSTED_ORIGINS = [x.strip() for x in os.environ.get("CSRF_TRUSTED_ORIGINS", "").split(",") if x.strip()]
+
+if SESSION_COOKIE_SAMESITE not in {"Lax", "Strict", "None"} or (SESSION_COOKIE_SAMESITE == "None" and DEBUG):
+    from django.core.exceptions import ImproperlyConfigured
+    raise ImproperlyConfigured("SESSION_COOKIE_SAMESITE must be Lax/Strict/None; None requires HTTPS with DJANGO_DEBUG=0.")
 
 if not DEBUG and SECRET_KEY == "dev-only-secret-change-me-before-deployment-2026":
     from django.core.exceptions import ImproperlyConfigured

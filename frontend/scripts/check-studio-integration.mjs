@@ -11,14 +11,17 @@ import { MemoryRouter } from "react-router-dom";
 
 const port = 19000 + Math.floor(Math.random() * 10000);
 const apiRoot = `http://127.0.0.1:${port}`;
+const splitApi = process.argv.includes("--split-api");
+const frontendRoot = splitApi ? "http://127.0.0.1:5174" : apiRoot;
+if (splitApi) process.env.VITE_API_BASE_URL = apiRoot + "/api/v1/";
 const backend = spawn(process.env.PYTHON || "python", [
   fileURLToPath(new URL("../tests/fixtures/api_server.py", import.meta.url)), String(port),
-], { stdio: ["ignore", "pipe", "pipe"] });
+], { stdio: ["ignore", "pipe", "pipe"], env: { ...process.env, GD_TEST_FRONTEND_ORIGIN: frontendRoot } });
 let backendLog = "";
 backend.stdout.on("data", data => { backendLog += data; });
 backend.stderr.on("data", data => { backendLog += data; });
 backend.on("error", error => { backendLog += error.message; });
-const dom = new JSDOM('<div id="root"></div>', { url: apiRoot });
+const dom = new JSDOM('<div id="root"></div>', { url: frontendRoot });
 for (const key of ["window", "document", "sessionStorage", "localStorage", "location", "Event", "MouseEvent"])
   globalThis[key] = dom.window[key];
 globalThis.dispatchEvent = window.dispatchEvent.bind(window);
@@ -37,13 +40,15 @@ globalThis.fetch = async (path, options = {}) => {
     if (body.type === "wallet-topup") topupRequests.push(body);
   }
   const headers = new Headers(options.headers);
+  if (splitApi) headers.set("Origin", frontendRoot);
   if (cookies.size) headers.set("Cookie", [...cookies].map(([k, v]) => `${k}=${v}`).join("; "));
   const response = await nativeFetch(url, { ...options, headers });
+  if (splitApi) assert.equal(response.headers.get("Access-Control-Allow-Origin"), frontendRoot);
   for (const cookie of response.headers.getSetCookie()) {
     const pair = cookie.split(";", 1)[0];
     const index = pair.indexOf("=");
     cookies.set(pair.slice(0, index), pair.slice(index + 1));
-    if (!/httponly/i.test(cookie)) document.cookie = pair + "; path=/";
+    if (!splitApi && !/httponly/i.test(cookie)) document.cookie = pair + "; path=/";
   }
   return response;
 };
@@ -82,6 +87,8 @@ try {
   assert.ok(alice, "Login did not establish a session");
   assert.deepEqual(snapshot.games.map(g => g.id), ["gta-v", "gta-vi", "cs2", "dota2"]);
   const bob = snapshot.state.users.find(u => u.handle === "bob").id;
+  assert.equal(snapshot.state.users.find(u => u.id === alice).status, "online");
+  assert.equal(snapshot.state.users.find(u => u.id === bob).status, "offline");
   server = await createServer({ server: { middlewareMode: true }, appType: "custom", optimizeDeps: { noDiscovery: true, include: [] } });
   const { default: App } = await server.ssrLoadModule("/src/App.jsx");
   root = createRoot(document.getElementById("root"));
@@ -261,10 +268,13 @@ try {
   await json("studio/account/", { mode: "login", login: "bob", password: "Test-strong-pass-42" });
   snapshot = await json("studio/snapshot/");
   assert.ok(snapshot.state.messages.some(m => m.text === "Hello from integrated UI" && m.to === bob));
+  assert.equal(snapshot.state.users.find(u => u.id === alice).status, "offline");
+  assert.equal(snapshot.state.users.find(u => u.id === bob).status, "online");
   assert.ok(snapshot.state.messages.find(m => m.text === "Hello from integrated UI").pinned);
   assert.deepEqual(snapshot.state.recentViews, {});
   assert.equal(snapshot.state.orders.length, 0);
   console.log("ACTION OK second account receives message and cannot see buyer orders");
+  console.log("ACTION OK server presence follows login/logout", splitApi ? "with separate API origin" : "with local API");
 } finally {
   if (root) await act(async () => root.unmount());
   if (server) await server.close();

@@ -650,7 +650,7 @@ export function Profile() {
   );
 }
 export function ProfileForm({ user, onSave }) {
-  const [values, setValues] = useState(() => ({ ...user, cover: user.cover || games.find((g) => g.available !== false)?.id || "" }));
+  const [values, setValues] = useState(() => ({ ...user, status: user.statusPreference || "online", cover: user.cover || games.find((g) => g.available !== false)?.id || "" }));
   const [uploadError, setUploadError] = useState("");
   const field = (k, v) => setValues({ ...values, [k]: v });
   return (
@@ -689,17 +689,18 @@ export function ProfileForm({ user, onSave }) {
           />
         </label>
         <label>
-          Статус
+          Отображение статуса
           <select
             value={values.status}
             onChange={(e) => field("status", e.target.value)}
           >
-            <option value="online">В сети</option>
-            <option value="playing">В игре</option>
-            <option value="offline">Не в сети</option>
+            <option value="online">Автоматически</option>
+            <option value="playing">В игре (вручную)</option>
+            <option value="offline">Невидимый</option>
           </select>
         </label>
       </div>
+      <p className="fine">Статус обновляется, пока сайт открыт. После потери связи — «Не в сети» примерно через 90 секунд. «Невидимый» всегда скрывает ваше присутствие.</p>
       <label>
         Аватар (PNG, JPEG, WebP до 500 КБ)
         <input

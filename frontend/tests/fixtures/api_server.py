@@ -19,6 +19,9 @@ with tempfile.TemporaryDirectory(prefix="gd-integration-") as directory:
     settings.SESSION_COOKIE_NAME = "gd_integration_session"
     settings.SESSION_COOKIE_SECURE = False
     settings.CSRF_COOKIE_SECURE = False
+    if os.environ.get("GD_TEST_FRONTEND_ORIGIN"):
+        settings.CORS_ALLOWED_ORIGINS = [os.environ["GD_TEST_FRONTEND_ORIGIN"]]
+        settings.CSRF_TRUSTED_ORIGINS = settings.CORS_ALLOWED_ORIGINS
     import django
     django.setup()
     from django.core.management import call_command

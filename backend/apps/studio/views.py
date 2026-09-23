@@ -13,6 +13,7 @@ from .common import identifier, lock_mutations
 from .commands import execute
 from .commerce import quote
 from .models import Operation
+from .presence import touch_presence
 
 
 class SnapshotView(APIView):
@@ -20,6 +21,7 @@ class SnapshotView(APIView):
 
     @transaction.atomic
     def get(self, request):
+        touch_presence(request)
         response = Response({**snapshot(request.user), "csrf": get_token(request)})
         response["Cache-Control"] = "no-store"
         return response

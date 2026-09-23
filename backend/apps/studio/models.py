@@ -13,6 +13,13 @@ class Profile(models.Model):
     recovery_hash = models.CharField(max_length=256, blank=True)
 
 
+class PresenceSession(models.Model):
+    """One browser login; only a hash of the session key is retained."""
+    session_hash = models.CharField(max_length=64, primary_key=True)
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    last_seen = models.DateTimeField(db_index=True)
+
+
 class Record(models.Model):
     """Versioned, server-validated documents for the small community sections.
 

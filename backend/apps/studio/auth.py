@@ -19,6 +19,8 @@ from rest_framework.views import APIView
 
 from apps.accounts.models import User
 from .common import lock_mutations, profile, text
+from .presence import clear_session_presence
+from .models import PresenceSession
 
 
 class AuthThrottle(AnonRateThrottle):
@@ -66,6 +68,7 @@ class AccountView(APIView):
                 p = profile(user)
                 p.recovery_hash = make_password(code)
                 p.save(update_fields=["recovery_hash"])
+                clear_session_presence(None, request, request.user)
                 login(request, user, backend="django.contrib.auth.backends.ModelBackend")
                 result["recovery"] = code
             elif mode in ("login", "reset"):
@@ -77,6 +80,7 @@ class AccountView(APIView):
                                         password=request.data.get("password", ""))
                     if not user:
                         raise ValidationError("Неверный логин или пароль, либо профиль заблокирован.")
+                    clear_session_presence(None, request, request.user)
                     login(request, user)
                 else:
                     recovery = text(request.data.get("recovery", ""), 128).upper()
@@ -84,6 +88,7 @@ class AccountView(APIView):
                         raise ValidationError("Неверный логин или код восстановления.")
                     user.set_password(password(request.data.get("password"), user))
                     user.save(update_fields=["password"])
+                    PresenceSession.objects.filter(user=user).delete()
                     # A saved recovery key remains usable; password changes invalidate sessions.
                     logout(request)
             else:

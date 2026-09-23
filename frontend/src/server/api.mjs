@@ -1,3 +1,5 @@
+import { createApiLocation } from "./urls.mjs";
+
 export function messageOf(data) {
   if (typeof data === "string") return data;
   if (Array.isArray(data)) return data.map(messageOf).join(" ");
@@ -5,21 +7,22 @@ export function messageOf(data) {
   return "Не удалось выполнить запрос.";
 }
 
-export function createApi(fetcher = (...args) => fetch(...args)) {
+export function createApi(fetcher = (...args) => fetch(...args), options = {}) {
+  const location = createApiLocation(options.baseUrl, options.origin);
   let csrf = "";
   const uncertain = new Map();
   const pending = new Map();
   async function request(path, { method = "GET", body, key, user, signal } = {}) {
     const form = typeof FormData !== "undefined" && body instanceof FormData;
-    const cookie = typeof document !== "undefined"
+    const cookie = !location.crossOrigin && typeof document !== "undefined"
       ? document.cookie.split("; ").find((x) => x.startsWith("csrftoken="))?.slice(10) : "";
     const headers = { Accept: "application/json" };
     if (body && !form) headers["Content-Type"] = "application/json";
     if (method !== "GET") headers["X-CSRFToken"] = cookie || csrf;
     if (key) headers["Idempotency-Key"] = key;
     if (user) headers["X-Store-User"] = user;
-    const response = await fetcher("/api/v1/studio/" + path, {
-      method, headers, credentials: "same-origin", cache: "no-store", signal,
+    const response = await fetcher(location.endpoint(path), {
+      method, headers, credentials: location.crossOrigin ? "include" : "same-origin", cache: "no-store", signal,
       body: body ? (form ? body : JSON.stringify(body)) : undefined,
     });
     let data;

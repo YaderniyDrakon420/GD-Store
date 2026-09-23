@@ -29,13 +29,29 @@ export function StoreProvider({ children, initialSnapshot }) {
   useEffect(() => {
     const controller = new AbortController();
     let timer;
+    let running = false;
     const poll = async () => {
+      if (running || controller.signal.aborted) return;
+      clearTimeout(timer);
+      running = true;
       try { await refresh(controller.signal); }
       catch (e) { if (!controller.signal.aborted) setError(e.message); }
+      finally { running = false; }
       if (!controller.signal.aborted) timer = setTimeout(poll, 5000);
     };
+    const visible = () => { if (document.visibilityState === "visible") void poll(); };
+    window.addEventListener("focus", poll);
+    window.addEventListener("online", poll);
+    window.addEventListener("pageshow", poll);
+    document.addEventListener("visibilitychange", visible);
     poll();
-    return () => { controller.abort(); clearTimeout(timer); };
+    return () => {
+      controller.abort(); clearTimeout(timer);
+      window.removeEventListener("focus", poll);
+      window.removeEventListener("online", poll);
+      window.removeEventListener("pageshow", poll);
+      document.removeEventListener("visibilitychange", visible);
+    };
   }, [refresh]);
   useEffect(() => {
     if (!notice) return;

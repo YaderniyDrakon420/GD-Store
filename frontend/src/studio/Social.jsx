@@ -13,6 +13,7 @@ import { Art, Avatar, Empty, Gate, Head, NotFound } from "./Studio";
 import { Modal, Author, date } from "./Personal";
 import Icon from "../components/Icon";
 import "./extras.css";
+import { studioUrl } from "../server/urls.mjs";
 export function Friends() {
   const { id } = useParams();
   const { state, me, act } = useDemo();
@@ -698,7 +699,7 @@ export function Workshop() {
               <p className="fine">
                 {item.subscribers} подписчиков
               </p>
-              {me && item.fileName && <a className="btn" href={"/api/v1/studio/mods/" + item.id + "/download/"}>Скачать ZIP</a>}
+              {me && item.fileName && <a className="btn" href={studioUrl("mods/" + item.id + "/download/")}>Скачать ZIP</a>}
               {item.author === me?.id && (
                 <div className="actions">
                   <button className="btn" onClick={() => setEditing(true)}>
