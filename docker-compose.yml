@@ -1,0 +1,32 @@
+# Local educational stack. Copy backend/.env.example to backend/.env first.
+# The frontend proxy keeps session cookies and CSRF on the same browser origin.
+services:
+  backend:
+    build: ./backend
+    env_file: ./backend/.env
+    environment:
+      DB_ENGINE: sqlite
+      SQLITE_PATH: /data/gdstore.sqlite3
+      PRIVATE_UPLOAD_ROOT: /data/workshop
+    volumes:
+      - store_data:/data
+      - media_data:/app/media
+    ports:
+      - "127.0.0.1:8000:8000"
+    command: >
+      sh -c "python manage.py migrate --noinput &&
+             python manage.py seed_catalog &&
+             python manage.py runserver 0.0.0.0:8000 --noreload"
+
+  frontend:
+    build: ./frontend
+    environment:
+      API_PROXY_TARGET: http://backend:8000
+    ports:
+      - "127.0.0.1:5173:5173"
+    depends_on:
+      - backend
+
+volumes:
+  store_data:
+  media_data:

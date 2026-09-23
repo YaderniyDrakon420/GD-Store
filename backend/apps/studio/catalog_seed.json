@@ -1,0 +1,91 @@
+[
+  {
+    "id": "gta-v",
+    "title": "Grand Theft Auto V",
+    "tagline": "Лос-Сантос. Три героя. Одна большая история.",
+    "description": "Открытый мир Лос-Сантоса и округа Блэйн, сюжет Майкла, Франклина и Тревора и многопользовательский GTA Online. В каталоге представлена версия Enhanced для ПК.",
+    "genre": "Экшен",
+    "tags": [
+      "Открытый мир",
+      "Сюжет",
+      "GTA Online",
+      "Enhanced"
+    ],
+    "price": 599,
+    "discount": 0,
+    "developer": "Rockstar Games",
+    "image": "/art/gta-v.jpg",
+    "color": "#31574c",
+    "position": 0,
+    "isPreorder": false,
+    "releaseDate": "2025-03-04",
+    "platforms": "ПК (Windows)",
+    "officialUrl": "https://store.steampowered.com/app/3240220/"
+  },
+  {
+    "id": "gta-vi",
+    "title": "Grand Theft Auto VI",
+    "tagline": "Возвращение в Вайс-Сити — оформите учебный предзаказ.",
+    "description": "Новая история Джейсона и Люсии в штате Леонида. Объявленный релиз — 19 ноября 2026 года на PlayStation 5 и Xbox Series X|S. Учебный предзаказ сохраняет запись в библиотеке со статусом ожидания; лицензию или игровой ключ магазин не выдаёт.",
+    "genre": "Экшен",
+    "tags": [
+      "Предзаказ",
+      "Открытый мир",
+      "Сюжет"
+    ],
+    "price": 2999,
+    "discount": 0,
+    "developer": "Rockstar Games",
+    "image": "/art/gta-vi.jpg",
+    "color": "#76586c",
+    "position": 1,
+    "isPreorder": true,
+    "releaseDate": "2026-11-19",
+    "platforms": "PlayStation 5 · Xbox Series X|S",
+    "officialUrl": "https://www.rockstargames.com/VI"
+  },
+  {
+    "id": "cs2",
+    "title": "Counter-Strike 2",
+    "tagline": "Командная тактика. Точный выстрел. Решающий раунд.",
+    "description": "Бесплатный соревновательный шутер Valve на Source 2: командные раунды, тактическая стрельба и рейтинговые матчи. Базовая игра бесплатна; платный Prime Status в эту карточку не входит.",
+    "genre": "Шутер",
+    "tags": [
+      "Командная игра",
+      "Соревновательная",
+      "Бесплатно"
+    ],
+    "price": 0,
+    "discount": 0,
+    "developer": "Valve",
+    "image": "/art/cs2.jpg",
+    "color": "#805c30",
+    "position": 2,
+    "isPreorder": false,
+    "releaseDate": null,
+    "platforms": "ПК (Windows, Linux)",
+    "officialUrl": "https://store.steampowered.com/app/730/"
+  },
+  {
+    "id": "dota2",
+    "title": "Dota 2",
+    "tagline": "Пять игроков. Сотни решений. Одна команда.",
+    "description": "Бесплатная командная MOBA от Valve. Выбирайте героя, развивайте его способности и вместе с командой уничтожайте главное здание соперника. Все герои доступны бесплатно.",
+    "genre": "MOBA",
+    "tags": [
+      "Командная игра",
+      "Стратегия",
+      "Бесплатно"
+    ],
+    "price": 0,
+    "discount": 0,
+    "developer": "Valve",
+    "image": "/art/dota2.jpg",
+    "color": "#663d35",
+    "position": 3,
+    "isPreorder": false,
+    "releaseDate": "2013-07-09",
+    "platforms": "ПК (Windows, Linux, macOS)",
+    "officialUrl": "https://store.steampowered.com/app/570/"
+  }
+]

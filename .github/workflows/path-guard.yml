@@ -1,0 +1,77 @@
+name: Path Guard
+
+on:
+  pull_request:
+    branches: [main]
+
+jobs:
+  path-guard:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Определить разрешённую зону по имени ветки
+        id: zone
+        env:
+          BRANCH: ${{ github.head_ref }}
+        run: |
+          echo "branch=$BRANCH"
+
+          case "$BRANCH" in
+            SaveliyBackend)
+              ALLOWED="backend/apps/accounts/ backend/apps/catalog/"
+              ;;
+            EvgeniyBackend)
+              ALLOWED="backend/apps/store/ backend/apps/payments/"
+              ;;
+            DanyaBackend)
+              ALLOWED="backend/apps/library/ backend/apps/reviews/"
+              ;;
+            feature/KarimFrontend)
+              ALLOWED="frontend/"
+              ;;
+            *)
+              echo "Ветка не подпадает под правила path-guard — пропускаем проверку"
+              ALLOWED=""
+              ;;
+          esac
+          echo "allowed=$ALLOWED" >> "$GITHUB_OUTPUT"
+
+      - name: Список общих файлов для всех
+        id: shared
+        run: |
+          echo "shared=backend/requirements.txt backend/.env.example docker-compose.yml README.md backend/config/settings.py backend/config/urls.py" >> "$GITHUB_OUTPUT"
+
+      - name: Проверить изменённые файлы
+        if: steps.zone.outputs.allowed != ''
+        run: |
+          ALLOWED="${{ steps.zone.outputs.allowed }}"
+          SHARED="${{ steps.shared.outputs.shared }}"
+          CHANGED=$(git diff --name-only origin/main...HEAD)
+
+          echo "Изменённые файлы:"
+          echo "$CHANGED"
+
+          FAIL=0
+          for f in $CHANGED; do
+            OK=0
+            for a in $ALLOWED; do
+              case "$f" in
+                "$a"*) OK=1 ;;
+              esac
+            done
+            for s in $SHARED; do
+              [ "$f" = "$s" ] && OK=1
+            done
+            if [ "$OK" -eq 0 ]; then
+              echo "::error::Файл вне зоны ответственности этой ветки: $f"
+              FAIL=1
+            fi
+          done
+
+          if [ "$FAIL" -eq 1 ]; then
+            echo "PR содержит изменения вне разрешённой зоны."
+            exit 1
+          fi

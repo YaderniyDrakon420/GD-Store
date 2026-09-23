@@ -1,0 +1,6 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {seed,transition as run} from '../src/demo/model.mjs';
+test('wallet topups validate amount and do not earn points',()=>{let s=run(seed(),{type:'wallet-topup',amount:500});assert.equal(s.users[0].wallet,500);assert.equal(s.users[0].points,1000);assert.equal(s.walletLog[0].amount,500);for(const amount of [-1,0,1.5,Infinity,10001])assert.throws(()=>run(s,{type:'wallet-topup',amount}));assert.throws(()=>run({...s,active:null},{type:'wallet-topup',amount:100}));});
+test('wallet checkout debits discounted total once and earns purchase points',()=>{let s=run(seed(),{type:'wallet-topup',amount:500});s=run(s,{type:'cart',game:'echoes'});s=run(s,{type:'checkout',method:'wallet',promo:'PLAY10',recipient:'nova'});assert.equal(s.users[0].wallet,320);assert.equal(s.users[0].points,1018);assert.ok(s.library.nova.includes('echoes'));assert.equal(s.walletLog.reduce((sum,r)=>sum+r.amount,0),320);assert.throws(()=>run(s,{type:'checkout',method:'wallet'}));});
+test('insufficient balance fails without changing wallet, order or library',()=>{const s=run(seed(),{type:'cart',game:'echoes'});const before=JSON.stringify(s);assert.throws(()=>run(s,{type:'checkout',method:'wallet'}));assert.equal(JSON.stringify(s),before);});

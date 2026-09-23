@@ -1,0 +1,18 @@
+# python
+__pycache__/
+*.pyc
+.env
+.venv/
+backend/staticfiles/
+backend/media/
+backend/private_uploads/
+*.sqlite3
+*.sqlite3-*
+
+# node
+node_modules/
+frontend/dist/
+
+# misc
+.DS_Store
+*.log
