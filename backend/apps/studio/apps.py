@@ -9,3 +9,4 @@ class StudioConfig(AppConfig):
         from . import chat_bridge  # noqa: F401
         from . import releases  # noqa: F401
         from . import presence  # noqa: F401
+        from . import security  # noqa: F401

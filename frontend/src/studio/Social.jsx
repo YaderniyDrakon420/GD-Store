@@ -14,9 +14,15 @@ import { Modal, Author, date } from "./Personal";
 import Icon from "../components/Icon";
 import "./extras.css";
 import { studioUrl } from "../server/urls.mjs";
+import { Attachment, useChatActivity } from "./LiveChat";
 export function Friends() {
   const { id } = useParams();
-  const { state, me, act } = useDemo();
+  const { state, me, act, uploadAttachment, notify } = useDemo();
+  const [attachment, setAttachment] = useState(null),
+    [uploading, setUploading] = useState(false),
+    [sending, setSending] = useState(false);
+  const uploadContext = useRef("");
+  uploadContext.current = `${me?.id}:${id}`;
   const [tab, setTab] = useState("Друзья"),
     [search, setSearch] = useState(""),
     [draft, setDraft] = useState(""),
@@ -47,23 +53,44 @@ export function Friends() {
     (m) =>
       (m.from === me?.id && m.to === id) || (m.to === me?.id && m.from === id),
   );
+  const typing = useChatActivity({
+    me: me?.id,
+    peer: id,
+    allowed,
+    lastMessage: messages.at(-1)?.id,
+  });
+  const peerActivity = (state.chatActivity || []).find(
+    (r) => r.user === id && r.peer === me?.id,
+  );
   useEffect(() => {
     setDraft("");
+    setAttachment(null);
     setMessageSearch("");
     setPinnedOnly(false);
   }, [id, state.active]);
   const query = messageSearch.trim().toLocaleLowerCase();
-  const filteredMessages = messages.filter((m) => (!pinnedOnly || m.pinned) && m.text.toLocaleLowerCase().includes(query));
+  const filteredMessages = messages.filter(
+    (m) =>
+      (!pinnedOnly || m.pinned) && m.text.toLocaleLowerCase().includes(query),
+  );
   const pinCount = messages.filter((m) => m.pinned).length;
   useEffect(() => {
-    if (!query && !pinnedOnly) end.current?.scrollIntoView({ block: "nearest" });
+    if (!query && !pinnedOnly)
+      end.current?.scrollIntoView({ block: "nearest" });
   }, [messages.length, id, query, pinnedOnly]);
   async function setPin(message) {
     if (pinBusy) return;
     setPinBusy(true);
     try {
-      await act({ type: "message-pin", message: message.id, pinned: !message.pinned }, message.pinned ? "Сообщение откреплено" : "Сообщение закреплено для обоих участников");
-    } finally { setPinBusy(false); }
+      await act(
+        { type: "message-pin", message: message.id, pinned: !message.pinned },
+        message.pinned
+          ? "Сообщение откреплено"
+          : "Сообщение закреплено для обоих участников",
+      );
+    } finally {
+      setPinBusy(false);
+    }
   }
   return (
     <Gate>
@@ -163,7 +190,9 @@ export function Friends() {
                       )}
                       <button
                         aria-label="Отклонить или отменить заявку"
-                        onClick={async () => await act({ type: "unfriend", friend: f.id })}
+                        onClick={async () =>
+                          await act({ type: "unfriend", friend: f.id })
+                        }
                       >
                         ×
                       </button>
@@ -238,12 +267,37 @@ export function Friends() {
               {allowed ? (
                 <>
                   <div className="chat-tools">
-                    <input type="search" aria-label="Поиск по переписке" placeholder="Найти сообщение…"
-                      value={messageSearch} onChange={(e) => setMessageSearch(e.target.value)} />
-                    <button className={"chip " + (pinnedOnly ? "active" : "")} aria-pressed={pinnedOnly}
-                      onClick={() => setPinnedOnly(!pinnedOnly)}>Закреплённые ({pinCount})</button>
-                    {(query || pinnedOnly) && <button className="link-button" onClick={() => { setMessageSearch(""); setPinnedOnly(false); }}>Сбросить</button>}
-                    <p className="fine">{query || pinnedOnly ? `Найдено: ${filteredMessages.length} из ${messages.length}. ` : ""}Закрепления видны обоим участникам.</p>
+                    <input
+                      type="search"
+                      aria-label="Поиск по переписке"
+                      placeholder="Найти сообщение…"
+                      value={messageSearch}
+                      onChange={(e) => setMessageSearch(e.target.value)}
+                    />
+                    <button
+                      className={"chip " + (pinnedOnly ? "active" : "")}
+                      aria-pressed={pinnedOnly}
+                      onClick={() => setPinnedOnly(!pinnedOnly)}
+                    >
+                      Закреплённые ({pinCount})
+                    </button>
+                    {(query || pinnedOnly) && (
+                      <button
+                        className="link-button"
+                        onClick={() => {
+                          setMessageSearch("");
+                          setPinnedOnly(false);
+                        }}
+                      >
+                        Сбросить
+                      </button>
+                    )}
+                    <p className="fine">
+                      {query || pinnedOnly
+                        ? `Найдено: ${filteredMessages.length} из ${messages.length}. `
+                        : ""}
+                      Закрепления видны обоим участникам.
+                    </p>
                   </div>
                   <div
                     className="messages"
@@ -260,22 +314,44 @@ export function Friends() {
                         }
                         key={m.id}
                       >
-                        {m.pinned && <span className="pinned-label">Закреплено</span>}
+                        {m.pinned && (
+                          <span className="pinned-label">Закреплено</span>
+                        )}
                         <p>{m.text}</p>
+                        <Attachment media={m.media} />
                         <ReportButton user={m.from} message={m.id} compact />
-                        <button className="link-button message-pin" disabled={pinBusy}
-                          aria-label={(m.pinned ? "Открепить сообщение: " : "Закрепить сообщение: ") + m.text.slice(0, 60)}
-                          onClick={() => setPin(m)}>{m.pinned ? "Открепить" : "Закрепить"}</button>
+                        <button
+                          className="link-button message-pin"
+                          disabled={pinBusy}
+                          aria-label={
+                            (m.pinned
+                              ? "Открепить сообщение: "
+                              : "Закрепить сообщение: ") + m.text.slice(0, 60)
+                          }
+                          onClick={() => setPin(m)}
+                        >
+                          {m.pinned ? "Открепить" : "Закрепить"}
+                        </button>
                         <small>
                           {date(m.at)} ·{" "}
                           {new Date(m.at).toLocaleTimeString("ru-RU", {
                             hour: "2-digit",
                             minute: "2-digit",
                           })}
+                          {m.from === me?.id &&
+                            (peerActivity?.readAt &&
+                            Date.parse(peerActivity.readAt) >= Date.parse(m.at)
+                              ? " · Прочитано"
+                              : " · Отправлено")}
                         </small>
                       </div>
                     ))}
-                    {!!messages.length && !filteredMessages.length && <p className="muted">Сообщения не найдены. Измените запрос или сбросьте фильтр.</p>}
+                    {!!messages.length && !filteredMessages.length && (
+                      <p className="muted">
+                        Сообщения не найдены. Измените запрос или сбросьте
+                        фильтр.
+                      </p>
+                    )}
                     {!messages.length && (
                       <div className="conversation-start">
                         <Icon name="chat" size={35} />
@@ -285,25 +361,89 @@ export function Friends() {
                     )}
                     <div ref={end} />
                   </div>
+                  {peerActivity?.typing && (
+                    <p className="fine" role="status">
+                      {peer.name} печатает…
+                    </p>
+                  )}
+                  <div className="chat-upload">
+                    <label>
+                      Прикрепить файл
+                      <input
+                        type="file"
+                        accept=".png,.jpg,.jpeg,.webp,.pdf,.txt,.zip"
+                        disabled={uploading || sending}
+                        onChange={async (e) => {
+                          const file = e.target.files[0];
+                          if (!file) return;
+                          const context = uploadContext.current;
+                          setUploading(true);
+                          try {
+                            const result = await uploadAttachment(file);
+                            if (context === uploadContext.current)
+                              setAttachment(result);
+                          } catch (error) {
+                            notify(error.message);
+                          } finally {
+                            setUploading(false);
+                            e.target.value = "";
+                          }
+                        }}
+                      />
+                    </label>
+                    {attachment && (
+                      <button
+                        className="btn"
+                        onClick={() => setAttachment(null)}
+                      >
+                        {attachment.name} ×
+                      </button>
+                    )}
+                    <small className="muted">До 5 МБ</small>
+                  </div>
                   <form
                     className="message-form"
                     onSubmit={async (e) => {
                       e.preventDefault();
-                      if (await act({ type: "message", user: peer.id, text: draft }))
-                        setDraft("");
+                      if (sending || uploading) return;
+                      const context = uploadContext.current;
+                      setSending(true);
+                      try {
+                        if (
+                          await act({
+                            type: "message",
+                            user: peer.id,
+                            text: draft,
+                            attachment: attachment?.id,
+                          })
+                        ) {
+                          if (context === uploadContext.current) {
+                            setDraft("");
+                            setAttachment(null);
+                          }
+                          typing(false);
+                        }
+                      } finally {
+                        setSending(false);
+                      }
                     }}
                   >
                     <input
                       maxLength={2000}
-                      required
+                      required={!attachment}
                       aria-label="Сообщение другу"
                       placeholder={"Написать " + peer.name + "…"}
                       value={draft}
-                      onChange={(e) => setDraft(e.target.value)}
+                      onChange={(e) => {
+                        setDraft(e.target.value);
+                        typing(!!e.target.value);
+                      }}
                     />
                     <button
                       className="btn primary"
-                      disabled={!draft.trim()}
+                      disabled={
+                        sending || uploading || (!draft.trim() && !attachment)
+                      }
                       aria-label="Отправить сообщение"
                     >
                       <Icon name="arrow" />
@@ -346,11 +486,13 @@ export function GameSelect({ value, onChange, all = false }) {
       onChange={(e) => onChange(e.target.value)}
     >
       {all && <option value="">Все игры</option>}
-      {games.filter((g) => g.available !== false || g.id === value).map((g) => (
-        <option key={g.id} value={g.id}>
-          {g.title}
-        </option>
-      ))}
+      {games
+        .filter((g) => g.available !== false || g.id === value)
+        .map((g) => (
+          <option key={g.id} value={g.id}>
+            {g.title}
+          </option>
+        ))}
     </select>
   );
 }
@@ -552,7 +694,10 @@ export function Community() {
             onSave={async (v) => {
               const newId = crypto.randomUUID();
               if (
-                await act({ type: "topic", id: newId, ...v }, "Обсуждение создано")
+                await act(
+                  { type: "topic", id: newId, ...v },
+                  "Обсуждение создано",
+                )
               ) {
                 setCreate(false);
                 nav("/community/" + newId);
@@ -661,12 +806,13 @@ export function Workshop() {
                 <p>{item.description}</p>
                 {item.fileName && (
                   <p className="muted">
-                    Файл: {item.fileName} · {Math.ceil((item.fileSize || 0) / 1024)} КБ
+                    Файл: {item.fileName} ·{" "}
+                    {Math.ceil((item.fileSize || 0) / 1024)} КБ
                   </p>
                 )}
                 <p className="fine">
-                  Работа хранится на сервере. Скачайте архив и установите его
-                  по инструкции автора.
+                  Работа хранится на сервере. Скачайте архив и установите его по
+                  инструкции автора.
                 </p>
               </div>
             </div>
@@ -696,10 +842,15 @@ export function Workshop() {
                   ? "Вы подписаны ✓"
                   : "＋ Подписаться"}
               </button>
-              <p className="fine">
-                {item.subscribers} подписчиков
-              </p>
-              {me && item.fileName && <a className="btn" href={studioUrl("mods/" + item.id + "/download/")}>Скачать ZIP</a>}
+              <p className="fine">{item.subscribers} подписчиков</p>
+              {me && item.fileName && (
+                <a
+                  className="btn"
+                  href={studioUrl("mods/" + item.id + "/download/")}
+                >
+                  Скачать ZIP
+                </a>
+              )}
               {item.author === me?.id && (
                 <div className="actions">
                   <button className="btn" onClick={() => setEditing(true)}>
@@ -708,7 +859,13 @@ export function Workshop() {
                   <button
                     className="btn danger"
                     onClick={async () => {
-                      if (await act({ type: "delete-mod", mod: id }, "Работа удалена")) nav("/workshop");
+                      if (
+                        await act(
+                          { type: "delete-mod", mod: id },
+                          "Работа удалена",
+                        )
+                      )
+                        nav("/workshop");
                     }}
                   >
                     Удалить
@@ -803,7 +960,10 @@ export function Workshop() {
             initial={item}
             onSave={async (v) => {
               if (
-                await act({ ...v, type: "edit-mod", mod: id }, "Изменения сохранены")
+                await act(
+                  { ...v, type: "edit-mod", mod: id },
+                  "Изменения сохранены",
+                )
               )
                 setEditing(false);
             }}
@@ -861,8 +1021,11 @@ function ModForm({ onSave, initial }) {
             setUploaded(info);
           }
           await onSave({ ...values, upload: info?.id });
-        } catch (e) { notify(e.message); }
-        finally { setBusy(false); }
+        } catch (e) {
+          notify(e.message);
+        } finally {
+          setBusy(false);
+        }
       }}
     >
       <label>
@@ -916,13 +1079,18 @@ function ModForm({ onSave, initial }) {
           type="file"
           accept=".zip"
           required={!initial}
-          onChange={(e) => { setFile(e.target.files?.[0] || null); setUploaded(null); }}
+          onChange={(e) => {
+            setFile(e.target.files?.[0] || null);
+            setUploaded(null);
+          }}
         />
       </label>
       <p className="fine">
         Архив сохраняется на сервере. Его смогут скачать вошедшие пользователи.
       </p>
-      <button className="btn primary" disabled={busy}>{busy ? "Загружаем…" : "Сохранить работу"}</button>
+      <button className="btn primary" disabled={busy}>
+        {busy ? "Загружаем…" : "Сохранить работу"}
+      </button>
     </form>
   );
 }

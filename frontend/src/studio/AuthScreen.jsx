@@ -4,6 +4,7 @@ import { useDemo } from "../demo/context";
 import { Art } from "./Studio";
 import { games } from "../server/catalog.mjs";
 import Icon from "../components/Icon";
+import { RequestPasswordEmail } from "./Security";
 export default function AuthScreen({ register = false, reset = false }) {
   const { account } = useDemo();
   const navigate = useNavigate();
@@ -15,6 +16,7 @@ export default function AuthScreen({ register = false, reset = false }) {
       password: "",
       confirm: "",
       recovery: "",
+      otp: "",
     }),
     [show, setShow] = useState(false),
     [busy, setBusy] = useState(false),
@@ -100,8 +102,8 @@ export default function AuthScreen({ register = false, reset = false }) {
             </p>
             <code>{code}</code>
             <p className="fine">
-              Код показан один раз. Сохраните его отдельно: восстановление
-              по email в этом учебном магазине не используется.
+              Код показан один раз. Сохраните его отдельно. Также можно
+              восстановить пароль письмом на вашу почту.
             </p>
             <button
               className="btn primary"
@@ -198,7 +200,7 @@ export default function AuthScreen({ register = false, reset = false }) {
                     required
                     autoComplete="off"
                     value={form.recovery}
-                    maxLength={40}
+                    maxLength={128}
                     onChange={(e) =>
                       field("recovery", e.target.value.toUpperCase())
                     }
@@ -249,6 +251,17 @@ export default function AuthScreen({ register = false, reset = false }) {
                   Забыли пароль?
                 </Link>
               )}
+              {!register && (
+                <label>
+                  Код 2FA или резервный код (если включён)
+                  <input
+                    autoComplete="one-time-code"
+                    maxLength={32}
+                    value={form.otp}
+                    onChange={(e) => field("otp", e.target.value)}
+                  />
+                </label>
+              )}
               {error && (
                 <p className="payment-error" role="alert">
                   {error}
@@ -265,6 +278,7 @@ export default function AuthScreen({ register = false, reset = false }) {
                 <Icon name="arrow" />
               </button>
             </form>
+            {reset && <RequestPasswordEmail />}
             <p className="fine space">
               Вход выполняется через сервер. Сохраните код восстановления,
               который получите при регистрации.

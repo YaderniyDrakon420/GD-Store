@@ -12,6 +12,7 @@ with tempfile.TemporaryDirectory(prefix="gd-integration-") as directory:
     settings.DATABASES["default"]["NAME"] = str(Path(directory) / "test.sqlite3")
     settings.MEDIA_ROOT = Path(directory) / "media"
     settings.PRIVATE_UPLOAD_ROOT = Path(directory) / "private_uploads"
+    settings.EMAIL_FILE_PATH = Path(directory) / "emails"
     settings.ALLOWED_HOSTS = ["127.0.0.1", "localhost"]
     settings.DEBUG = True
     # Browsers share cookies across localhost ports; keep the disposable test
@@ -29,9 +30,10 @@ with tempfile.TemporaryDirectory(prefix="gd-integration-") as directory:
     from apps.accounts.models import Friendship
     call_command("migrate", verbosity=0)
     call_command("seed_catalog")
+    call_command("seed_store_products")
     User = get_user_model()
-    alice = User.objects.create_user(username="alice", password="Test-strong-pass-42")
-    bob = User.objects.create_user(username="bob", password="Test-strong-pass-42")
+    alice = User.objects.create_user(username="alice", email="alice@example.test", password="Test-strong-pass-42")
+    bob = User.objects.create_user(username="bob", email="bob@example.test", password="Test-strong-pass-42")
     User.objects.create_superuser(username="owner", email="owner@example.test", password="Test-strong-pass-42")
     Friendship.objects.create(from_user=alice, to_user=bob, status="accepted")
     call_command("runserver", "127.0.0.1:" + sys.argv[1], use_reloader=False)

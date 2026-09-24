@@ -1,4 +1,6 @@
 import { ReviewList } from "./ServiceFeatures";
+import { BadgeBoard } from "./Progression";
+import { ProductOffers, ProductLibrary } from "./Products";
 import { GameExtras } from "./GameExtras";
 import { visibleSection } from "../demo/service.mjs";
 import Showcase from "./Showcase";
@@ -120,6 +122,7 @@ export function Game() {
               <p>{g.description}</p>
               <GameExtras key={g.id} game={g} />
               <div className="detail-links">
+                <Link to={"/hub/" + g.id}>Центр игры ↗</Link>
                 <Link to={"/community?game=" + g.id}>Обсуждения ↗</Link>
                 <Link to={"/workshop?game=" + g.id}>Мастерская ↗</Link>
               </div>
@@ -138,14 +141,34 @@ export function Game() {
                 <dd>{g.platforms || "Не указана"}</dd>
                 <dt>Статус</dt>
                 <dd>{g.isPreorder ? "Предзаказ · ожидает релиза" : "Вышла"}</dd>
-                {g.releaseDate && <><dt>Дата релиза</dt><dd>{new Date(g.releaseDate + "T12:00:00").toLocaleDateString("ru-RU")}</dd></>}
-                {g.officialUrl && <><dt>Подробнее</dt><dd><a href={g.officialUrl} target="_blank" rel="noreferrer">Официальная страница ↗</a></dd></>}
+                {g.releaseDate && (
+                  <>
+                    <dt>Дата релиза</dt>
+                    <dd>
+                      {new Date(g.releaseDate + "T12:00:00").toLocaleDateString(
+                        "ru-RU",
+                      )}
+                    </dd>
+                  </>
+                )}
+                {g.officialUrl && (
+                  <>
+                    <dt>Подробнее</dt>
+                    <dd>
+                      <a href={g.officialUrl} target="_blank" rel="noreferrer">
+                        Официальная страница ↗
+                      </a>
+                    </dd>
+                  </>
+                )}
               </dl>
             </div>
           ) : tab === "Достижения" ? (
             <div className="panel">
               <h2>Коллекция достижений</h2>
-              <p className="muted space">Интеграция с игровыми достижениями не подключена</p>
+              <p className="muted space">
+                Интеграция с игровыми достижениями не подключена
+              </p>
               <Achievements game={g} owned={false} />
             </div>
           ) : (
@@ -198,11 +221,17 @@ export function Game() {
                 </form>
               ) : (
                 <p className="muted">
-                  {g.isPreorder ? "Отзывы станут доступны после релиза." : "Добавьте игру в библиотеку, чтобы оставить отзыв."}
+                  {g.isPreorder
+                    ? "Отзывы станут доступны после релиза."
+                    : "Добавьте игру в библиотеку, чтобы оставить отзыв."}
                 </p>
               )}
             </div>
           )}
+          <section className="space">
+            <h2 className="space">Издания и дополнения</h2>
+            <ProductOffers game={g.id} />
+          </section>
         </div>
         <aside className="panel purchase">
           <p className="eyebrow">ВАША СЛЕДУЮЩАЯ ИГРА</p>
@@ -219,7 +248,8 @@ export function Game() {
           </div>
           {owned ? (
             <Link className="btn primary" to="/library">
-              <Icon name="library" />{g.isPreorder ? "Предзаказ в библиотеке" : "В библиотеке"}
+              <Icon name="library" />
+              {g.isPreorder ? "Предзаказ в библиотеке" : "В библиотеке"}
             </Link>
           ) : (
             <button
@@ -233,7 +263,13 @@ export function Game() {
               }
             >
               <Icon name="cart" />
-              {cart ? "Убрать из корзины" : g.available === false ? "Снято с продажи" : g.isPreorder ? "Предзаказ в корзину" : "В корзину"}
+              {cart
+                ? "Убрать из корзины"
+                : g.available === false
+                  ? "Снято с продажи"
+                  : g.isPreorder
+                    ? "Предзаказ в корзину"
+                    : "В корзину"}
             </button>
           )}
           <button
@@ -258,8 +294,15 @@ export function Achievements() {
   return (
     <div className="achievements">
       <div className="achievement">
-        <span><Icon name="trophy" size={25} /></span>
-        <div><strong>Нет данных о достижениях</strong><small>GD Store не получает игровой прогресс из Steam или консолей.</small></div>
+        <span>
+          <Icon name="trophy" size={25} />
+        </span>
+        <div>
+          <strong>Нет данных о достижениях</strong>
+          <small>
+            GD Store не получает игровой прогресс из Steam или консолей.
+          </small>
+        </div>
       </div>
     </div>
   );
@@ -303,6 +346,7 @@ export function Collection({ kind }) {
           История заказов
         </Link>
       </Head>
+      {kind === "library" && <ProductLibrary />}
       {kind === "library" && (
         <div className="library-collections-link">
           <div>
@@ -354,8 +398,18 @@ export function Collection({ kind }) {
             <div key={g.id}>
               <GameCard game={g} />
               <div className="library-meta">
-                <span>{g.isPreorder ? "Предзаказ · ожидает релиза" : "Учебная библиотека"}</span>
-                <span>{g.isPreorder && g.releaseDate ? new Date(g.releaseDate + "T12:00:00").toLocaleDateString("ru-RU") : "Без игрового клиента"}</span>
+                <span>
+                  {g.isPreorder
+                    ? "Предзаказ · ожидает релиза"
+                    : "Учебная библиотека"}
+                </span>
+                <span>
+                  {g.isPreorder && g.releaseDate
+                    ? new Date(g.releaseDate + "T12:00:00").toLocaleDateString(
+                        "ru-RU",
+                      )
+                    : "Без игрового клиента"}
+                </span>
               </div>
             </div>
           ))}
@@ -371,15 +425,26 @@ export function Collection({ kind }) {
                 <Link to={"/game/" + g.id}>
                   <h3>{g.title}</h3>
                 </Link>
-                <p className="muted">{g.available === false ? "Снято с продажи — удалите из корзины" : g.isPreorder ? "Предзаказ · " + g.platforms : g.genre}</p>
+                <p className="muted">
+                  {g.available === false
+                    ? "Снято с продажи — удалите из корзины"
+                    : g.isPreorder
+                      ? "Предзаказ · " + g.platforms
+                      : g.genre}
+                </p>
               </div>
               <strong>{money(price(g))}</strong>
               {kind === "wishlist" && (
                 <button
                   className="btn"
-                  disabled={g.available === false || state.cart[me?.id]?.includes(g.id)}
+                  disabled={
+                    g.available === false || state.cart[me?.id]?.includes(g.id)
+                  }
                   onClick={async () =>
-                    await act({ type: "cart", game: g.id }, "Добавлено в корзину")
+                    await act(
+                      { type: "cart", game: g.id },
+                      "Добавлено в корзину",
+                    )
                   }
                 >
                   В корзину
@@ -529,10 +594,7 @@ export function Profile() {
             {[
               [libraryVisible ? owned.length : "—", "Игр"],
               [
-                owned.reduce(
-                  (s, g) => s + (own ? g.hours : 0),
-                  0,
-                ),
+                owned.reduce((s, g) => s + (own ? g.hours : 0), 0),
                 "Часов в игре",
               ],
               [friendsVisible ? fs.length : "—", "Друзей"],
@@ -564,16 +626,11 @@ export function Profile() {
               </p>
             )
           ) : tab === "Достижения" ? (
-            <div className="panel">
-              <h2>За пределами обычного</h2>
-              <p className="muted space">Пример витрины достижений игрока</p>
-              <Achievements
-                game={games[0]}
-                owned={
-                  false
-                }
-              />
-            </div>
+            activityVisible ? (
+              <BadgeBoard user={user} />
+            ) : (
+              <p className="panel muted">Достижения скрыты владельцем.</p>
+            )
           ) : (
             <div className="panel">
               <h2>Последняя активность</h2>
@@ -606,8 +663,15 @@ export function Profile() {
             <div className="profile-badge">
               <Icon name="trophy" size={30} />
               <div>
-                <strong>Исследователь миров</strong>
-                <small>Демонстрационный значок</small>
+                <strong>
+                  {user.badges?.find((b) => b.code === user.featuredBadge)
+                    ?.title ||
+                    user.badges?.[0]?.title ||
+                    "Новый игрок"}
+                </strong>
+                <small>
+                  {user.xp || 0} XP · уровень {user.level || 1}
+                </small>
               </div>
             </div>
           </div>
@@ -650,7 +714,11 @@ export function Profile() {
   );
 }
 export function ProfileForm({ user, onSave }) {
-  const [values, setValues] = useState(() => ({ ...user, status: user.statusPreference || "online", cover: user.cover || games.find((g) => g.available !== false)?.id || "" }));
+  const [values, setValues] = useState(() => ({
+    ...user,
+    status: user.statusPreference || "online",
+    cover: user.cover || games.find((g) => g.available !== false)?.id || "",
+  }));
   const [uploadError, setUploadError] = useState("");
   const field = (k, v) => setValues({ ...values, [k]: v });
   return (
@@ -700,7 +768,10 @@ export function ProfileForm({ user, onSave }) {
           </select>
         </label>
       </div>
-      <p className="fine">Статус обновляется, пока сайт открыт. После потери связи — «Не в сети» примерно через 90 секунд. «Невидимый» всегда скрывает ваше присутствие.</p>
+      <p className="fine">
+        Статус обновляется, пока сайт открыт. После потери связи — «Не в сети»
+        примерно через 90 секунд. «Невидимый» всегда скрывает ваше присутствие.
+      </p>
       <label>
         Аватар (PNG, JPEG, WebP до 500 КБ)
         <input
@@ -749,11 +820,13 @@ export function ProfileForm({ user, onSave }) {
           value={values.cover || ""}
           onChange={(e) => field("cover", e.target.value)}
         >
-          {games.filter((g) => g.available !== false || g.id === values.cover).map((g) => (
-            <option value={g.id} key={g.id}>
-              {g.title}
-            </option>
-          ))}
+          {games
+            .filter((g) => g.available !== false || g.id === values.cover)
+            .map((g) => (
+              <option value={g.id} key={g.id}>
+                {g.title}
+              </option>
+            ))}
         </select>
       </label>
       <fieldset>

@@ -40,6 +40,9 @@ class QuoteView(APIView):
             raise ValidationError("Передайте объект расчёта заказа.")
         if request.headers.get("X-Store-User") and request.headers["X-Store-User"] != str(request.user.pk):
             raise PermissionDenied("Аккаунт изменился. Обновите страницу.")
+        if request.data.get("product"):
+            from .products import product_quote
+            return Response(product_quote(request.user, request.data))
         return Response(quote(request.user, request.data))
 
 

@@ -37,6 +37,10 @@ def touch_presence(request):
         created = False
     if updated or created:
         PresenceSession.objects.filter(last_seen__lt=now - timedelta(days=1)).delete()
+        from .models import AccountDevice
+        from .security import device_label
+        AccountDevice.objects.update_or_create(session_key=request.session.session_key,
+            defaults={"user": request.user, "label": device_label(request), "last_seen": now})
 
 
 def online_users():

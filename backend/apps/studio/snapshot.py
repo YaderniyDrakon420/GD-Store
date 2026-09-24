@@ -51,7 +51,7 @@ def snapshot(viewer):
         app = p.appearance if p else {}
         pref = p.preferences if p else {}
         public = {k: app[k] for k in ["bio", "country", "color", "avatar", "cover",
-                  "cosmeticAvatar", "cosmeticBanner", "cosmeticFrame", "showcase", "banReason"] if k in app}
+                  "cosmeticAvatar", "cosmeticBanner", "cosmeticFrame", "showcase", "banReason", "featuredBadge"] if k in app}
         if "avatar" not in public and u.avatar:
             public["avatar"] = u.avatar.url
         if "country" not in public and u.country_code:
@@ -121,7 +121,7 @@ def snapshot(viewer):
         elif kind == "orderMeta" and own:
             for order in state["orders"]:
                 if order["id"] == data.get("order"):
-                    order.update({k: data[k] for k in ("method", "promo", "pointsEarned") if k in data})
+                    order.update({k: data[k] for k in ("method", "promo", "pointsEarned", "productTitle", "product") if k in data})
         elif kind == "reviewVotes":
             for review in state["reviews"]:
                 if review["id"] == data.get("review"):
@@ -168,4 +168,6 @@ def snapshot(viewer):
     state["messages"].sort(key=lambda x: (x["at"], x["id"]))
     if staff:
         state["adminStats"] = {"orders": Order.objects.count()}
+    from .feature_snapshot import extend_snapshot
+    extend_snapshot(state, viewer, allowed)
     return {"state": state, "games": catalog(viewer), "cosmetics": COSMETICS}
