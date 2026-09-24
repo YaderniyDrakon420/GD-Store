@@ -5,12 +5,12 @@ export function messageOf(data) {
   return "Не удалось выполнить запрос.";
 }
 
-// Базовый URL Railway для бэкенда
-const API_BASE_URL = (
-  import.meta.env?.VITE_API_URL || 
-  import.meta.env?.VITE_API_BASE_URL || 
-  "https://gd-store-production.up.railway.app"
-).replace(/\/+$/, "");
+// Нормализуем хост Railway, исключая дублирование /api/v1
+const rawEnvUrl = import.meta.env?.VITE_API_URL || import.meta.env?.VITE_API_BASE_URL || "https://gd-store-production.up.railway.app";
+const cleanEnvUrl = rawEnvUrl.trim().replace(/\/+$/, "");
+const API_BASE_URL = cleanEnvUrl.endsWith("/api/v1") 
+  ? cleanEnvUrl.slice(0, -7) 
+  : cleanEnvUrl;
 
 export function createApi(fetcher = (...args) => fetch(...args)) {
   let csrf = "";
@@ -27,7 +27,6 @@ export function createApi(fetcher = (...args) => fetch(...args)) {
     if (key) headers["Idempotency-Key"] = key;
     if (user) headers["X-Store-User"] = user;
 
-    // Формируем абсолютный URL на Railway (например: https://gd-store-production.up.railway.app/api/v1/studio/snapshot/)
     const cleanPath = path.startsWith("/") ? path.slice(1) : path;
     const fullUrl = `${API_BASE_URL}/api/v1/studio/${cleanPath}`;
 
