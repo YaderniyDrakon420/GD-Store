@@ -38,19 +38,28 @@ export async function api(
   retry = true,
 ) {
   const version = generation;
-  const url = new URL(
-    path,
-    new URL(base, globalThis.location?.origin || "http://localhost"),
-  );
+
+  // Если path уже является полным URL (например, из page.next при пагинации)
+  let targetUrl;
+  if (path.startsWith("http://") || path.startsWith("https://")) {
+    targetUrl = new URL(path);
+  } else {
+    // Корректно склеиваем base (/api/v1/) и относительный путь (snapshot/)
+    const cleanBase = base.endsWith("/") ? base : `${base}/`;
+    const cleanPath = path.startsWith("/") ? path.slice(1) : path;
+    targetUrl = new URL(cleanPath, cleanBase);
+  }
+
   const apiOrigin = new URL(
     base,
     globalThis.location?.origin || "http://localhost",
   ).origin;
-  if (url.origin !== apiOrigin)
+
+  if (targetUrl.origin !== apiOrigin)
     throw Error("API вернул ссылку на другой сервер.");
   let response;
   try {
-    response = await fetch(url, {
+    response = await fetch(targetUrl, {
       method,
       signal,
       headers: {
