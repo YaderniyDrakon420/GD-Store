@@ -8,10 +8,22 @@ export function messageOf(data) {
 }
 
 export function createApi(fetcher = (...args) => fetch(...args), options = {}) {
-  const location = createApiLocation(options.baseUrl, options.origin);
+  // Определяем базвый URL из Vercel Environment Variables
+  const envUrl = import.meta.env?.VITE_API_URL || import.meta.env?.VITE_API_BASE_URL || "https://gd-store-production.up.railway.app";
+  
+  // Нормализуем URL, если в нем указан /api/v1
+  const cleanEnvUrl = envUrl.trim().replace(/\/+$/, "");
+  const normalizedBaseUrl = cleanEnvUrl.endsWith("/api/v1") 
+    ? cleanEnvUrl.slice(0, -7) 
+    : cleanEnvUrl;
+
+  const baseUrl = options.baseUrl || normalizedBaseUrl;
+  const location = createApiLocation(baseUrl, options.origin);
+  
   let csrf = "";
   const uncertain = new Map();
   const pending = new Map();
+
   async function request(path, { method = "GET", body, key, user, signal } = {}) {
     const form = typeof FormData !== "undefined" && body instanceof FormData;
     const cookie = !location.crossOrigin && typeof document !== "undefined"
@@ -21,28 +33,33 @@ export function createApi(fetcher = (...args) => fetch(...args), options = {}) {
     if (method !== "GET") headers["X-CSRFToken"] = cookie || csrf;
     if (key) headers["Idempotency-Key"] = key;
     if (user) headers["X-Store-User"] = user;
+
     const response = await fetcher(location.endpoint(path), {
       method, headers, credentials: location.crossOrigin ? "include" : "same-origin", cache: "no-store", signal,
       body: body ? (form ? body : JSON.stringify(body)) : undefined,
     });
+
     let data;
     try { data = await response.json(); }
     catch { throw Error("Сервер вернул неполный ответ. Повторите запрос."); }
+
     if (!response.ok) {
       const error = Error(messageOf(data));
       error.status = response.status;
       throw error;
     }
+
     if (data.csrf) csrf = data.csrf;
     return data;
   }
+
   function command(action, user) {
     const signature = JSON.stringify([user, action]);
     if (pending.has(signature)) return pending.get(signature);
-    // Retain the operation key after an ambiguous network failure so a retry
-    // cannot charge the wallet twice.
+
     const key = uncertain.get(signature) || crypto.randomUUID();
     uncertain.set(signature, key);
+
     const promise = (async () => {
       for (let attempt = 0; attempt < 2; attempt++) {
         try {
@@ -56,9 +73,22 @@ export function createApi(fetcher = (...args) => fetch(...args), options = {}) {
         }
       }
     })().finally(() => pending.delete(signature));
+
     pending.set(signature, promise);
     return promise;
   }
+
   return { request, command };
 }
+
 export const api = createApi();
+
+export let games = [];
+export let cosmetics = [];
+
+export function setCatalog(data) {
+  games = data.games;
+  cosmetics = data.cosmetics;
+}
+
+export const price = (game) => game?.finalPrice ?? Math.round((game?.price || 0) * (1 - (game?.discount || 0) / 100) * 100) / 100;
