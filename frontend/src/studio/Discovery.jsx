@@ -36,16 +36,21 @@ export function Compare() {
   const selected = (state.comparison[me?.id] || [])
     .map((id) => games.find((g) => g.id === id))
     .filter(Boolean);
-  const options = games.filter((g) => g.available !== false && !selected.some((s) => s.id === g.id));
+  const options = games.filter(
+    (g) => g.available !== false && !selected.some((s) => s.id === g.id),
+  );
   const rows = [
     ["Цена", (g) => money(price(g))],
     ["Скидка", (g) => (g.discount ? "−" + g.discount + "%" : "Без скидки")],
-    ["Оценка игроков", (g) => g.rating == null ? "Нет отзывов" : g.rating + "% положительных"],
+    [
+      "Оценка игроков",
+      (g) => (g.rating == null ? "Нет отзывов" : g.rating + "% положительных"),
+    ],
     ["Жанр", (g) => g.genre],
     ["Игровые особенности", (g) => g.tags.join(" · ")],
     ["Разработчик", (g) => g.developer],
     ["Платформы", (g) => g.platforms || "Не указаны"],
-    ["Статус", (g) => g.isPreorder ? "Предзаказ" : "Вышла"],
+    ["Статус", (g) => (g.isPreorder ? "Предзаказ" : "Вышла")],
   ];
   return (
     <Gate>
@@ -70,7 +75,8 @@ export function Compare() {
           value=""
           disabled={selected.length >= 3}
           onChange={async (e) => {
-            if (e.target.value) await act({ type: "compare", game: e.target.value });
+            if (e.target.value)
+              await act({ type: "compare", game: e.target.value });
           }}
         >
           <option value="">＋ Выберите игру</option>
@@ -98,7 +104,9 @@ export function Compare() {
                     </Link>
                     <button
                       className="link-button"
-                      onClick={async () => await act({ type: "compare", game: g.id })}
+                      onClick={async () =>
+                        await act({ type: "compare", game: g.id })
+                      }
                     >
                       Убрать ×
                     </button>
@@ -145,22 +153,28 @@ export function Compare() {
         />
       )}
       <p className="fine space">
-        Цены служат для учебных заказов. Оценки рассчитаны по отзывам пользователей GD Store.
+        Цены служат для учебных заказов. Оценки рассчитаны по отзывам
+        пользователей GD Store.
       </p>
     </Gate>
   );
 }
 export function Discover() {
-  const { state, me } = useDemo();
+  const { state, me, act } = useDemo();
+  const suggestion = (state.recommendationQueue || [])[0];
+  const recommended = games.find((g) => g.id === suggestion?.game);
   const [mood, setMood] = useState("any"),
     [budget, setBudget] = useState(1200),
     [excludeOwned, setExcludeOwned] = useState(true),
     [picked, setPicked] = useState(null);
-  const candidates = pickGames(games.filter((g) => g.available !== false && !g.isPreorder), {
-    mood,
-    budget,
-    owned: excludeOwned ? state.library[me?.id] || [] : [],
-  });
+  const candidates = pickGames(
+    games.filter((g) => g.available !== false && !g.isPreorder),
+    {
+      mood,
+      budget,
+      owned: excludeOwned ? state.library[me?.id] || [] : [],
+    },
+  );
   const result = candidates.find((g) => g.id === picked);
   function choose() {
     const available =
@@ -177,6 +191,64 @@ export function Discover() {
         title="Сегодня хочется…"
         text="Выберите настроение и бюджет. Остальное оставьте случаю."
       />
+      {me && (
+        <section className="panel space">
+          <h2>Ваша очередь рекомендаций</h2>
+          {recommended ? (
+            <div className="gd-feature-grid space">
+              <GameCard game={recommended} />
+              <div>
+                <h3>{recommended.title}</h3>
+                <p className="muted space">{suggestion.reason}</p>
+                <div className="actions space">
+                  <button
+                    className="btn primary"
+                    onClick={() =>
+                      act(
+                        {
+                          type: "recommendation",
+                          game: recommended.id,
+                          value: "like",
+                        },
+                        "Добавлено в желаемое",
+                      )
+                    }
+                  >
+                    Интересно
+                  </button>
+                  <button
+                    className="btn"
+                    onClick={() =>
+                      act({
+                        type: "recommendation",
+                        game: recommended.id,
+                        value: "skip",
+                      })
+                    }
+                  >
+                    Не интересно
+                  </button>
+                </div>
+                <small className="muted">
+                  Основано на вашей библиотеке, желаемом и предыдущих ответах.
+                </small>
+              </div>
+            </div>
+          ) : (
+            <>
+              <p className="muted space">
+                Вы просмотрели все доступные варианты или уже владеете ими.
+              </p>
+              <button
+                className="btn space"
+                onClick={() => act({ type: "recommendations-reset" })}
+              >
+                Сбросить ответы
+              </button>
+            </>
+          )}
+        </section>
+      )}
       <div className="discover-layout">
         <section className="panel">
           <h2>Какой у вас план?</h2>

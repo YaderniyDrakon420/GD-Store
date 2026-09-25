@@ -11,14 +11,17 @@ import { MemoryRouter } from "react-router-dom";
 
 const port = 19000 + Math.floor(Math.random() * 10000);
 const apiRoot = `http://127.0.0.1:${port}`;
+const splitApi = process.argv.includes("--split-api");
+const frontendRoot = splitApi ? "http://127.0.0.1:5174" : apiRoot;
+if (splitApi) process.env.VITE_API_BASE_URL = apiRoot + "/api/v1/";
 const backend = spawn(process.env.PYTHON || "python", [
   fileURLToPath(new URL("../tests/fixtures/api_server.py", import.meta.url)), String(port),
-], { stdio: ["ignore", "pipe", "pipe"] });
+], { stdio: ["ignore", "pipe", "pipe"], env: { ...process.env, GD_TEST_FRONTEND_ORIGIN: frontendRoot } });
 let backendLog = "";
 backend.stdout.on("data", data => { backendLog += data; });
 backend.stderr.on("data", data => { backendLog += data; });
 backend.on("error", error => { backendLog += error.message; });
-const dom = new JSDOM('<div id="root"></div>', { url: apiRoot });
+const dom = new JSDOM('<div id="root"></div>', { url: frontendRoot });
 for (const key of ["window", "document", "sessionStorage", "localStorage", "location", "Event", "MouseEvent"])
   globalThis[key] = dom.window[key];
 globalThis.dispatchEvent = window.dispatchEvent.bind(window);
@@ -37,13 +40,15 @@ globalThis.fetch = async (path, options = {}) => {
     if (body.type === "wallet-topup") topupRequests.push(body);
   }
   const headers = new Headers(options.headers);
+  if (splitApi) headers.set("Origin", frontendRoot);
   if (cookies.size) headers.set("Cookie", [...cookies].map(([k, v]) => `${k}=${v}`).join("; "));
   const response = await nativeFetch(url, { ...options, headers });
+  if (splitApi) assert.equal(response.headers.get("Access-Control-Allow-Origin"), frontendRoot);
   for (const cookie of response.headers.getSetCookie()) {
     const pair = cookie.split(";", 1)[0];
     const index = pair.indexOf("=");
     cookies.set(pair.slice(0, index), pair.slice(index + 1));
-    if (!/httponly/i.test(cookie)) document.cookie = pair + "; path=/";
+    if (!splitApi && !/httponly/i.test(cookie)) document.cookie = pair + "; path=/";
   }
   return response;
 };
@@ -82,6 +87,8 @@ try {
   assert.ok(alice, "Login did not establish a session");
   assert.deepEqual(snapshot.games.map(g => g.id), ["gta-v", "gta-vi", "cs2", "dota2"]);
   const bob = snapshot.state.users.find(u => u.handle === "bob").id;
+  assert.equal(snapshot.state.users.find(u => u.id === alice).status, "online");
+  assert.equal(snapshot.state.users.find(u => u.id === bob).status, "offline");
   server = await createServer({ server: { middlewareMode: true }, appType: "custom", optimizeDeps: { noDiscovery: true, include: [] } });
   const { default: App } = await server.ssrLoadModule("/src/App.jsx");
   root = createRoot(document.getElementById("root"));
@@ -124,7 +131,8 @@ try {
   await act(async () => root.unmount());
   root = null;
   const routes = ["/", "/game/gta-v", "/profile", "/library", "/cart", "/checkout", "/orders", "/friends", "/messages/" + bob,
-    "/settings", "/compare", "/discover", "/community", "/workshop", "/wallet", "/support", "/events", "/teammates", "/notifications", "/collections"];
+    "/settings", "/compare", "/discover", "/community", "/workshop", "/wallet", "/support", "/events", "/teammates", "/notifications", "/collections",
+    "/inventory", "/progress", "/hub", "/hub/gta-v", "/products", "/security", "/account-action"];
   for (const route of routes) {
     root = createRoot(document.getElementById("root"));
     await act(async () => root.render(React.createElement(MemoryRouter, { initialEntries: [route] }, React.createElement(App))));
@@ -261,10 +269,92 @@ try {
   await json("studio/account/", { mode: "login", login: "bob", password: "Test-strong-pass-42" });
   snapshot = await json("studio/snapshot/");
   assert.ok(snapshot.state.messages.some(m => m.text === "Hello from integrated UI" && m.to === bob));
+  assert.equal(snapshot.state.users.find(u => u.id === alice).status, "offline");
+  assert.equal(snapshot.state.users.find(u => u.id === bob).status, "online");
   assert.ok(snapshot.state.messages.find(m => m.text === "Hello from integrated UI").pinned);
   assert.deepEqual(snapshot.state.recentViews, {});
   assert.equal(snapshot.state.orders.length, 0);
   console.log("ACTION OK second account receives message and cannot see buyer orders");
+  console.log("ACTION OK server presence follows login/logout", splitApi ? "with separate API origin" : "with local API");
+
+  // Exercise the new controls against Django, not a local transition mock.
+  const renderFeature = async (route) => {
+    if (root) await act(async () => root.unmount());
+    root = createRoot(document.getElementById("root"));
+    await act(async () => root.render(React.createElement(MemoryRouter, { initialEntries: [route] }, React.createElement(App))));
+    await until(() => document.querySelector("main"), "Feature not loaded: " + route);
+  };
+  const switchUser = async (login) => {
+    if (root) { await act(async () => root.unmount()); root = null; }
+    await json("studio/account/", { mode: "logout" });
+    await json("studio/account/", { mode: "login", login, password: "Test-strong-pass-42" });
+  };
+  await renderFeature("/inventory");
+  await act(async () => button("Обмены").click());
+  await act(async () => Simulate.change(document.querySelector("main select"), { target: { value: alice } }));
+  for (const fieldset of document.querySelectorAll("main fieldset"))
+    await act(async () => Simulate.change(fieldset.querySelector('input[type="checkbox"]')));
+  await act(async () => Simulate.submit(document.querySelector("main form")));
+  await until(() => button("Подтвердить"), "Trade confirmation missing");
+  await act(async () => button("Подтвердить").click());
+  await until(() => document.body.textContent.includes("Ожидает ответа"), "Trade was not saved");
+  snapshot = await json("studio/snapshot/");
+  const tradeId = snapshot.state.trades[0].id;
+  await switchUser("alice");
+  await renderFeature("/inventory");
+  await act(async () => button("Обмены").click());
+  await act(async () => button("Принять").click());
+  await act(async () => button("Подтвердить").click());
+  await until(() => document.body.textContent.includes("Завершён"), "Trade acceptance missing");
+  snapshot = await json("studio/snapshot/");
+  assert.equal(snapshot.state.trades.find(t => t.id === tradeId).status, "accepted");
+  console.log("ACTION OK inventory trade: item selection, recipient confirmation, both ownership changes");
+
+  await act(async () => button("Мои предметы").click());
+  await act(async () => button("Выставить на продажу").click());
+  await act(async () => Simulate.submit(document.querySelector("dialog form")));
+  await until(() => !document.querySelector("dialog"), "Market listing did not close");
+  snapshot = await json("studio/snapshot/");
+  const listingId = snapshot.state.market.find(l => l.status === "active").id;
+  await switchUser("bob");
+  await json("studio/commands/", { type: "wallet-topup", amount: 50 }, { "Idempotency-Key": crypto.randomUUID(), "X-Store-User": bob });
+  await renderFeature("/inventory");
+  await act(async () => button("Торговая площадка").click());
+  await act(async () => button("Купить").click());
+  await act(async () => button("Подтвердить").click());
+  await until(() => document.body.textContent.includes("Куплено"), "Market purchase did not finish");
+  snapshot = await json("studio/snapshot/");
+  assert.equal(snapshot.state.market.find(l => l.id === listingId).status, "sold");
+  assert.equal(snapshot.state.users.find(u => u.id === bob).wallet, 40);
+  console.log("ACTION OK marketplace purchase and server ledger");
+
+  await renderFeature("/hub/gta-v");
+  await act(async () => button("Руководства").click());
+  await act(async () => button("Опубликовать").click());
+  await act(async () => Simulate.change(document.querySelector("dialog input"), { target: { value: "UI integration guide" } }));
+  await act(async () => Simulate.change(document.querySelector("dialog textarea"), { target: { value: "An actual persisted guide body." } }));
+  await act(async () => Simulate.submit(document.querySelector("dialog form")));
+  await until(() => !document.querySelector("dialog") && document.body.textContent.includes("UI integration guide"), "Guide not persisted");
+  snapshot = await json("studio/snapshot/");
+  assert.ok(snapshot.state.users.find(u => u.id === bob).badges.some(b => b.code === "guide"));
+  console.log("ACTION OK game hub publication and earned community badge");
+
+  await switchUser("alice");
+  await renderFeature("/products");
+  const dlcCard = [...document.querySelectorAll("main article")].find(a => a.querySelector("h3").textContent.includes("учебное дополнение"));
+  await act(async () => dlcCard.querySelector("button").click());
+  await until(() => button("Подтвердить покупку"), "Product quote missing");
+  await act(async () => button("Подтвердить покупку").click());
+  await until(() => !document.querySelector("dialog"), "Product checkout not complete");
+  snapshot = await json("studio/snapshot/");
+  assert.ok(snapshot.state.licenses.some(l => l.product === "gd-learning-guide"));
+  await renderFeature("/library");
+  await until(() => document.body.textContent.includes("Мои издания и дополнения"), "License not rendered");
+  console.log("ACTION OK DLC purchase, confirmed price and delivered library content");
+  await renderFeature("/security");
+  await until(() => document.body.textContent.includes("Этот сеанс"), "Current security session missing");
+  assert.ok(document.body.textContent.includes("alice"));
+  console.log("ACTION OK security page loads current browser session");
 } finally {
   if (root) await act(async () => root.unmount());
   if (server) await server.close();

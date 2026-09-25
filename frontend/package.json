@@ -9,7 +9,8 @@
     "preview": "vite preview",
     "lint": "eslint . --ext .js,.jsx,.mjs",
     "test": "node --test tests/*.test.mjs",
-    "test:integration": "node scripts/check-integration.mjs"
+    "test:integration": "node scripts/check-integration.mjs",
+    "test:integration:split": "node scripts/check-studio-integration.mjs --split-api"
   },
   "dependencies": {
     "@tanstack/react-query": "^5.45.1",

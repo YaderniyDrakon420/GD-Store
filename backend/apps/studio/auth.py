@@ -19,6 +19,8 @@ from rest_framework.views import APIView
 
 from apps.accounts.models import User
 from .common import lock_mutations, profile, text
+from .presence import clear_session_presence
+from .models import PresenceSession
 
 
 class AuthThrottle(AnonRateThrottle):
@@ -41,8 +43,26 @@ class AccountView(APIView):
     throttle_classes = [AuthThrottle]
 
     def post(self, request):
+        if not isinstance(request.data, dict):
+            raise ValidationError("Передайте объект действия.")
         mode = request.data.get("mode")
         result = {}
+        if mode == "login":
+            value = text(request.data.get("login"), 254)
+            users = list(User.objects.filter(Q(username__iexact=value) | Q(email__iexact=value))[:2])
+            username = users[0].username if len(users) == 1 else value
+            # Authentication runs before the login transaction, so rejected
+            # attempts still count against the shared per-account rate limit.
+            user = authenticate(request, username=username, password=request.data.get("password", ""), otp=request.data.get("otp", ""))
+            if not user:
+                raise ValidationError("Неверный логин, пароль или код 2FA, либо вход временно ограничен.")
+            with transaction.atomic():
+                lock_mutations()
+                clear_session_presence(None, request, request.user)
+                login(request, user)
+                from .community_features import sync_achievements
+                sync_achievements(user)
+            return Response({"csrf": get_token(request)}, headers={"Cache-Control": "no-store"})
         with transaction.atomic():
             lock_mutations()
             if mode == "logout":
@@ -66,26 +86,25 @@ class AccountView(APIView):
                 p = profile(user)
                 p.recovery_hash = make_password(code)
                 p.save(update_fields=["recovery_hash"])
-                login(request, user, backend="django.contrib.auth.backends.ModelBackend")
+                clear_session_presence(None, request, request.user)
+                login(request, user, backend="apps.studio.security.TwoFactorBackend")
                 result["recovery"] = code
-            elif mode in ("login", "reset"):
+            elif mode == "reset":
                 value = text(request.data.get("login"), 254)
                 users = list(User.objects.filter(Q(username__iexact=value) | Q(email__iexact=value))[:2])
                 user = users[0] if len(users) == 1 else None
-                if mode == "login":
-                    user = authenticate(request, username=user.username if user else value,
-                                        password=request.data.get("password", ""))
-                    if not user:
-                        raise ValidationError("Неверный логин или пароль, либо профиль заблокирован.")
-                    login(request, user)
-                else:
-                    recovery = text(request.data.get("recovery", ""), 128).upper()
-                    if not user or not user.is_active or not check_password(recovery, profile(user).recovery_hash):
-                        raise ValidationError("Неверный логин или код восстановления.")
-                    user.set_password(password(request.data.get("password"), user))
-                    user.save(update_fields=["password"])
-                    # A saved recovery key remains usable; password changes invalidate sessions.
-                    logout(request)
+                recovery = text(request.data.get("recovery", ""), 128).upper()
+                if not user or not user.is_active or not check_password(recovery, profile(user).recovery_hash):
+                    raise ValidationError("Неверный логин или код восстановления.")
+                from .security import verify_second_factor, revoke_devices
+                if not verify_second_factor(user, request.data.get("otp", "")):
+                    raise ValidationError("Введите код 2FA или резервный код.")
+                user.set_password(password(request.data.get("password"), user))
+                user.save(update_fields=["password"])
+                PresenceSession.objects.filter(user=user).delete()
+                revoke_devices(user)
+                # A saved recovery key remains usable; password changes invalidate sessions.
+                logout(request)
             else:
                 raise ValidationError("Неизвестное действие входа.")
         return Response({**result, "csrf": get_token(request)})

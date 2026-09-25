@@ -20,6 +20,7 @@ import {
 import { useDemo } from "../demo/context";
 import { games, price } from "../server/catalog.mjs";
 import Icon from "../components/Icon";
+import { mediaUrl } from "../server/urls.mjs";
 export const money = (n) =>
   n === 0 ? "Бесплатно" : new Intl.NumberFormat("ru-RU").format(n) + " ₴";
 export function Avatar({ user, large = false }) {
@@ -37,7 +38,7 @@ export function Avatar({ user, large = false }) {
       }}
     >
       {avatar ? (
-        <img src={avatar} alt="" />
+        <img src={mediaUrl(avatar)} alt="" />
       ) : (
         user?.initials || user?.name?.slice(0, 2) || "?"
       )}

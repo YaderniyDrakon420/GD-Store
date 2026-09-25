@@ -21,9 +21,10 @@ def project_message(sender, instance, created, using, raw=False, **kwargs):
         return
     conversation = instance.conversation
     recipient = conversation.second_id if instance.sender_id == conversation.first_id else conversation.first_id
+    existing = Record.objects.using(using).filter(pk=message_record_id(instance.pk)).first()
     Record.objects.using(using).update_or_create(pk=message_record_id(instance.pk), defaults={
         "kind": "messages", "owner_id": instance.sender_id,
-        "data": {"from": str(instance.sender_id), "to": str(recipient), "text": instance.text},
+        "data": {**(existing.data if existing else {}), "from": str(instance.sender_id), "to": str(recipient), "text": instance.text},
     })
     Record.objects.using(using).filter(pk=message_record_id(instance.pk)).update(created_at=instance.created_at)
     if created:

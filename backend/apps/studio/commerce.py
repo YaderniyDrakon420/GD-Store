@@ -172,6 +172,8 @@ def refund_educational(order):
     """Called under the existing order/user locks; all changes roll back together."""
     if not hasattr(order, "payment") or order.payment.provider != "educational":
         return
+    from .products import refund_products
+    refund_products(order)
     user = User.objects.select_for_update().get(pk=order.user_id)
     earned = sum(PointsEntry.objects.filter(user=user, order=order).values_list("amount", flat=True))
     if profile(user).points < earned:

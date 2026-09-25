@@ -1,4 +1,10 @@
 import Wallet from "./studio/Wallet";
+import Inventory from "./studio/Inventory";
+import Progression from "./studio/Progression";
+import GameHub from "./studio/GameHub";
+import Products from "./studio/Products";
+import Security, { AccountAction } from "./studio/Security";
+import "./studio/features.css";
 import Support from "./studio/Support";
 import { PointsHistory } from "./studio/ServiceFeatures";
 import Teammates from "./studio/Teammates";
@@ -66,6 +72,13 @@ export default function App({ initialSnapshot }) {
           <Route path="checkout" element={<Checkout />} />
           <Route path="compare" element={<Compare />} />
           <Route path="discover" element={<Discover />} />
+          <Route path="inventory" element={<Inventory />} />
+          <Route path="progress" element={<Progression />} />
+          <Route path="hub" element={<GameHub />} />
+          <Route path="hub/:slug" element={<GameHub />} />
+          <Route path="products" element={<Products />} />
+          <Route path="security" element={<Security />} />
+          <Route path="account-action" element={<AccountAction />} />
           <Route path="*" element={<NotFound />} />
         </Route>
       </Routes>

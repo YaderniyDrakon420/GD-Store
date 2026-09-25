@@ -30,10 +30,7 @@ export function Settings() {
             {state.users
               .filter((u) => u.id === me?.id)
               .map((u) => (
-                <button
-                  key={u.id}
-                  onClick={() => nav("/profile")}
-                >
+                <button key={u.id} onClick={() => nav("/profile")}>
                   <Avatar user={u} />
                   <span>
                     {u.name}
@@ -48,6 +45,9 @@ export function Settings() {
           </Link>
           <Link className="btn space" to="/login">
             Войти с паролем
+          </Link>
+          <Link className="btn space" to="/security">
+            Почта, двухфакторный вход и сеансы
           </Link>
         </section>
         <div>
@@ -117,8 +117,8 @@ export function Settings() {
           onClose={() => setConfirm(false)}
         >
           <p className="muted">
-            Оформление, приватность и уведомления вернутся к стандартным значениям.
-            Библиотека, сообщения и заказы сохранятся.
+            Оформление, приватность и уведомления вернутся к стандартным
+            значениям. Библиотека, сообщения и заказы сохранятся.
           </p>
           <div className="actions space">
             <button className="btn" onClick={() => setConfirm(false)}>
@@ -127,7 +127,7 @@ export function Settings() {
             <button
               className="btn danger"
               onClick={async () => {
-                if (!await reset()) return;
+                if (!(await reset())) return;
                 setConfirm(false);
                 nav("/");
               }}
@@ -159,9 +159,19 @@ export function Orders() {
               <h3>{date(o.at)}</h3>
             </div>
             <span className="pill accent">
-              {o.status !== "paid" ? ({pending: "Ожидает оплаты", cancelled: "Отменён", refunded: "Возвращён", failed: "Ошибка оплаты", expired: "Истёк"}[o.status] || o.status) : o.recipient && o.recipient !== o.user
-                ? "Подарок отправлен"
-                : o.awaitingRelease?.length ? "Предзаказ · ожидает релиза" : "В библиотеке"}
+              {o.status !== "paid"
+                ? {
+                    pending: "Ожидает оплаты",
+                    cancelled: "Отменён",
+                    refunded: "Возвращён",
+                    failed: "Ошибка оплаты",
+                    expired: "Истёк",
+                  }[o.status] || o.status
+                : o.recipient && o.recipient !== o.user
+                  ? "Подарок отправлен"
+                  : o.awaitingRelease?.length
+                    ? "Предзаказ · ожидает релиза"
+                    : "В библиотеке"}
             </span>
           </div>
           {o.recipient && o.recipient !== o.user && (
@@ -180,12 +190,23 @@ export function Orders() {
               <span>↗</span>
             </Link>
           ))}
+          {o.productTitle && <p className="order-game">{o.productTitle}</p>}
           <div className="order-total">
             <span>Демонстрационная сумма</span>
             <strong>{money(o.total)}</strong>
-            <small className="accent">{o.status === "refunded" ? "Баллы возвращены" : `＋${o.pointsEarned || 0} демобаллов`}</small>
+            <small className="accent">
+              {o.status === "refunded"
+                ? "Баллы возвращены"
+                : `＋${o.pointsEarned || 0} демобаллов`}
+            </small>
           </div>
-          {["paid", "pending"].includes(o.status) && <button className="btn space" onClick={() => setConfirmOrder(o)}>{o.status === "paid" ? "Вернуть учебную покупку" : "Отменить заказ"}</button>}
+          {["paid", "pending"].includes(o.status) && (
+            <button className="btn space" onClick={() => setConfirmOrder(o)}>
+              {o.status === "paid"
+                ? "Вернуть учебную покупку"
+                : "Отменить заказ"}
+            </button>
+          )}
         </section>
       ))}
       {!orders.length && (
@@ -194,10 +215,43 @@ export function Orders() {
           text="Добавьте игру в корзину и оформите демозаказ."
         />
       )}
-      {confirmOrder && <Modal title="Подтвердить действие с заказом?" onClose={() => setConfirmOrder(null)}>
-        <p className="muted">{confirmOrder.status === "paid" ? "Игры этого заказа будут убраны из библиотеки получателя. Учебные средства вернутся в кошелёк, если покупка оплачена из него; начисленные баллы будут отменены." : "Заказ будет отменён."}</p>
-        <div className="actions space"><button className="btn" onClick={() => setConfirmOrder(null)}>Назад</button><button className="btn danger" onClick={async () => { if (await act({ type: confirmOrder.status === "paid" ? "order-refund" : "order-cancel", order: confirmOrder.id }, "Заказ обновлён")) setConfirmOrder(null); }}>Подтвердить</button></div>
-      </Modal>}
+      {confirmOrder && (
+        <Modal
+          title="Подтвердить действие с заказом?"
+          onClose={() => setConfirmOrder(null)}
+        >
+          <p className="muted">
+            {confirmOrder.status === "paid"
+              ? "Игры этого заказа будут убраны из библиотеки получателя. Учебные средства вернутся в кошелёк, если покупка оплачена из него; начисленные баллы будут отменены."
+              : "Заказ будет отменён."}
+          </p>
+          <div className="actions space">
+            <button className="btn" onClick={() => setConfirmOrder(null)}>
+              Назад
+            </button>
+            <button
+              className="btn danger"
+              onClick={async () => {
+                if (
+                  await act(
+                    {
+                      type:
+                        confirmOrder.status === "paid"
+                          ? "order-refund"
+                          : "order-cancel",
+                      order: confirmOrder.id,
+                    },
+                    "Заказ обновлён",
+                  )
+                )
+                  setConfirmOrder(null);
+              }}
+            >
+              Подтвердить
+            </button>
+          </div>
+        </Modal>
+      )}
     </Gate>
   );
 }

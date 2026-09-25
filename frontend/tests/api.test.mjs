@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { createApi, messageOf } from "../src/server/api.mjs";
+import { createApiLocation } from "../src/server/urls.mjs";
 
 const ok = (data) => ({ ok: true, json: async () => data });
 test("commands attach credentials, CSRF, actor and reuse the key after a lost response", async () => {
@@ -50,4 +51,43 @@ test("server validation errors are shown and never retried automatically", async
   await assert.rejects(api.command({ type: "checkout" }, "alice"), /Недостаточно средств/);
   assert.equal(count, 1);
   assert.equal(messageOf({ password: ["Слишком короткий."] }), "Слишком короткий.");
+});
+
+test("separate API origin uses credentials and the backend CSRF, never the frontend cookie", async () => {
+  const oldDocument = globalThis.document;
+  globalThis.document = { cookie: "csrftoken=wrong-frontend-token" };
+  const calls = [];
+  try {
+    const api = createApi(async (url, options) => {
+      calls.push([url, options]);
+      return ok({ csrf: "backend-token", result: {} });
+    }, { baseUrl: "https://api.example.com/api/v1", origin: "https://store.example.com" });
+    await api.request("snapshot/");
+    await api.command({ type: "message", text: "hello" }, "alice");
+    assert.equal(calls[1][0], "https://api.example.com/api/v1/studio/commands/");
+    assert.equal(calls[1][1].credentials, "include");
+    assert.equal(calls[1][1].headers["X-CSRFToken"], "backend-token");
+    await api.request("../store/orders/123/refund/", { method: "POST", body: {} });
+    assert.equal(calls[2][0], "https://api.example.com/api/v1/store/orders/123/refund/");
+    await assert.rejects(api.request("https://evil.example/collect", { method: "POST", body: {} }), /запрещён/);
+    assert.equal(calls.length, 3, "No credentials sent outside the configured API");
+  } finally { globalThis.document = oldDocument; }
+});
+
+test("media uses the API host, while bundled artwork and inline avatars keep their URLs", () => {
+  const location = createApiLocation("https://api.example.com/api/v1/", "https://store.example.com");
+  assert.equal(location.media("/media/a.jpg"), "https://api.example.com/media/a.jpg");
+  for (const path of ["/art/a.jpg", "data:image/png;base64,abc", "https://cdn.example.com/a.jpg", undefined])
+    assert.equal(location.media(path), path);
+  assert.equal(location.endpoint("mods/123/download/"), "https://api.example.com/api/v1/studio/mods/123/download/");
+  assert.throws(() => location.endpoint("../../../outside/"), /запрещён/);
+});
+
+test("local API remains relative and malformed API settings fail early", () => {
+  const location = createApiLocation("/api/v1/", "http://localhost:5173");
+  assert.equal(location.crossOrigin, false);
+  assert.equal(location.endpoint("snapshot/"), "/api/v1/studio/snapshot/");
+  assert.equal(location.media("/media/a.jpg"), "/media/a.jpg");
+  for (const base of ["ftp://host/api/", "https://user:pass@host/api/", "https://host/api/?secret=x", "https://host/api/#hash"])
+    assert.throws(() => createApiLocation(base, "https://store.example.com"));
 });

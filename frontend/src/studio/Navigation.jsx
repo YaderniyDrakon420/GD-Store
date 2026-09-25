@@ -14,30 +14,36 @@ export const navigationGroups = [
       "/discover",
       "/cart",
       "/checkout",
+      "/products",
     ],
     tabs: [
       ["/", "Каталог"],
       ["/wishlist", "Желаемое"],
       ["/compare", "Сравнение"],
+      ["/products", "Издания и комплекты"],
+      ["/discover", "Рекомендации"],
     ],
   },
   {
     to: "/library",
     icon: "library",
     label: "Библиотека",
-    paths: ["/library", "/collections"],
+    paths: ["/library", "/collections", "/inventory", "/progress"],
     tabs: [
       ["/library", "Все игры"],
       ["/collections", "Коллекции"],
+      ["/inventory", "Инвентарь и обмены"],
+      ["/progress", "Достижения"],
     ],
   },
   {
     to: "/community",
     icon: "globe",
     label: "Сообщество",
-    paths: ["/community", "/workshop", "/teammates", "/events"],
+    paths: ["/community", "/workshop", "/teammates", "/events", "/hub"],
     tabs: [
       ["/community", "Обсуждения"],
+      ["/hub", "Центры игр"],
       ["/workshop", "Мастерская"],
       ["/teammates", "Поиск напарников"],
       ["/events", "Игровые вечера"],
@@ -127,9 +133,12 @@ export function ProfileMenu({ me }) {
             ? [
                 ["/profile", "Мой профиль"],
                 ["/points-shop", "Оформление"],
+                ["/inventory", "Инвентарь"],
+                ["/progress", "Значки и опыт"],
                 ["/gifts", "Подарки"],
                 ["/orders", "История покупок"],
                 ["/settings", "Настройки"],
+                ["/security", "Защита аккаунта"],
               ]
             : [
                 ["/login", "Войти"],

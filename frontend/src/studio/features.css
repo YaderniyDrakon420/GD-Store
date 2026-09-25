@@ -1,0 +1,81 @@
+.gd-feature-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 250px), 1fr));
+  gap: 18px;
+}
+.feature-card {
+  border: 1px solid var(--line, #39444a);
+  border-radius: 12px;
+  padding: 20px;
+  opacity: 0.72;
+}
+.feature-card.earned {
+  opacity: 1;
+  border-color: var(--accent, #78a9a3);
+}
+.feature-card h3 {
+  margin: 16px 0 8px;
+}
+.feature-card .btn {
+  margin-top: 16px;
+}
+.feature-prose {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  margin: 16px 0;
+  line-height: 1.7;
+}
+.feature-comment {
+  border-top: 1px solid var(--line, #39444a);
+  margin-top: 18px;
+  padding-top: 14px;
+}
+.feature-comment p {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.xp-progress {
+  width: 100%;
+  height: 8px;
+  accent-color: var(--accent, #78a9a3);
+}
+.chat-attachment {
+  display: grid;
+  gap: 8px;
+  margin: 12px 0;
+  overflow-wrap: anywhere;
+}
+.chat-attachment img {
+  display: block;
+  max-width: 100%;
+  max-height: 480px;
+  object-fit: contain;
+  border-radius: 8px;
+}
+.security-codes {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  padding: 16px;
+  border: 1px solid var(--line, #39444a);
+  border-radius: 8px;
+  user-select: all;
+}
+.gd-feature-grid fieldset {
+  border: 1px solid var(--line, #39444a);
+  padding: 14px;
+  border-radius: 10px;
+  min-width: 0;
+}
+.gd-feature-grid .setting-row {
+  gap: 12px;
+}
+.chat-upload {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  padding: 12px 20px;
+}
+.chat-upload input {
+  max-width: 100%;
+}

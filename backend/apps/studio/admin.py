@@ -30,3 +30,32 @@ class LedgerAdmin(admin.ModelAdmin):
 
 admin.site.register(WalletEntry, LedgerAdmin)
 admin.site.register(PointsEntry, LedgerAdmin)
+
+from .models import StoreProduct, AchievementAward, InventoryItem, TradeOffer, MarketListing
+
+
+@admin.register(StoreProduct)
+class StoreProductAdmin(admin.ModelAdmin):
+    list_display = ("title", "kind", "price", "discount_percent", "is_published")
+    list_filter = ("kind", "is_published")
+    filter_horizontal = ("games",)
+
+    def has_change_permission(self, request, obj=None):
+        # Sold compositions are managed through the storefront's validated API.
+        from .models import ProductLicense
+        return super().has_change_permission(request, obj) and not (obj and ProductLicense.objects.filter(product=obj).exists())
+
+
+class ReadOnlyFeatureAdmin(admin.ModelAdmin):
+    def has_add_permission(self, request):
+        return False
+
+    def has_change_permission(self, request, obj=None):
+        return False
+
+    def has_delete_permission(self, request, obj=None):
+        return False
+
+
+for model in [AchievementAward, InventoryItem, TradeOffer, MarketListing]:
+    admin.site.register(model, ReadOnlyFeatureAdmin)

@@ -1,26 +1,12 @@
-// Гарантируем корректный дефолтный URL
-const DEFAULT_API_URL = "https://gd-store-production.up.railway.app/api/v1/";
-
-const envUrl = import.meta.env?.VITE_API_URL || import.meta.env?.VITE_API_BASE_URL;
-const rawBase = (envUrl && envUrl.trim() !== "") ? envUrl : DEFAULT_API_URL;
-
-// Проверяем наличие /api/v1 и слеша на конце
-let formattedBase = rawBase.trim();
-if (!formattedBase.includes("/api/v1")) {
-  formattedBase = formattedBase.replace(/\/+$/, "") + "/api/v1/";
-}
-const base = formattedBase.endsWith("/") ? formattedBase : `${formattedBase}/`;
-
+const base = import.meta.env?.VITE_API_BASE_URL || "/api/v1/";
 let tokens = null;
 try {
   tokens = JSON.parse(sessionStorage.getItem("gd-api-session") || "null");
 } catch {
   /* anonymous */
 }
-
 let refreshing = null;
 let generation = 0;
-
 export function setTokens(value, refreshed = false) {
   if (!refreshed) generation += 1;
   tokens = value;
@@ -31,9 +17,7 @@ export function setTokens(value, refreshed = false) {
     /* in-memory session */
   }
 }
-
 export const hasSession = () => !!tokens?.access;
-
 function message(data) {
   if (typeof data === "string") return data;
   if (Array.isArray(data)) return data.map(message).join(" ");
@@ -47,27 +31,25 @@ function message(data) {
       .join(" ");
   return "Ошибка запроса";
 }
-
 export async function api(
   path,
   { method = "GET", body, signal, anonymous = false } = {},
   retry = true,
 ) {
   const version = generation;
-
-  // Формируем абсолютный URL бэкенда Railway
-  let targetUrl;
-  if (path.startsWith("http://") || path.startsWith("https://")) {
-    targetUrl = new URL(path);
-  } else {
-    const cleanPath = path.startsWith("/") ? path.slice(1) : path;
-    const absoluteBase = base.startsWith("http") ? base : `https://${base}`;
-    targetUrl = new URL(cleanPath, absoluteBase);
-  }
-
+  const url = new URL(
+    path,
+    new URL(base, globalThis.location?.origin || "http://localhost"),
+  );
+  const apiOrigin = new URL(
+    base,
+    globalThis.location?.origin || "http://localhost",
+  ).origin;
+  if (url.origin !== apiOrigin)
+    throw Error("API вернул ссылку на другой сервер.");
   let response;
   try {
-    response = await fetch(targetUrl.toString(), {
+    response = await fetch(url, {
       method,
       signal,
       headers: {
@@ -82,7 +64,6 @@ export async function api(
     if (error.name === "AbortError") throw error;
     throw Error("Сервер недоступен. Проверьте соединение и повторите запрос.");
   }
-
   if (
     response.status === 401 &&
     !anonymous &&
@@ -116,27 +97,21 @@ export async function api(
     if (!tokens) throw Error("Сессия завершена. Войдите снова.");
     return api(path, { method, body, signal, anonymous }, false);
   }
-
   if (!anonymous && generation !== version)
     throw Error("Сессия изменилась. Повторите действие.");
-
   const data =
     response.status === 204 ? null : await response.json().catch(() => null);
-
   if (response.status === 401 && !anonymous) {
     setTokens(null);
     globalThis.dispatchEvent?.(new Event("gd-session-expired"));
   }
-
   if (!response.ok) {
     const error = new Error(message(data) || `Ошибка ${response.status}`);
     error.status = response.status;
     throw error;
   }
-
   return data;
 }
-
 export async function all(path, options) {
   const rows = [];
   let next = path;

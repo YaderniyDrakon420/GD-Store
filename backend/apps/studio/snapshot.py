@@ -14,6 +14,7 @@ from .models import Profile, Record, WalletEntry, PointsEntry, PinnedMessage
 from apps.catalog.models import Game
 from .common import document
 from .catalog import catalog
+from .presence import online_users
 
 COSMETICS = json.loads((Path(__file__).with_name("cosmetics.json")).read_text(encoding="utf-8"))
 ARRAYS = ("friends messages topics mods orders reviews activity adminLog events notifications "
@@ -29,6 +30,7 @@ def snapshot(viewer):
     state.update(version=5, active=uid, users=[], announcement={"enabled": False, "text": ""},
                  paymentTestMode=settings.PAYMENT_TEST_MODE)
     profiles = {str(p.user_id): p for p in Profile.objects.all()}
+    connected = online_users()
     rels = [{"id": str(f.pk), "from": str(f.from_user_id), "to": str(f.to_user_id),
              "status": f.status, "blockedBy": str(f.blocked_by_id) if f.blocked_by_id else None}
             for f in Friendship.objects.all()]
@@ -48,21 +50,24 @@ def snapshot(viewer):
         p = profiles.get(owner)
         app = p.appearance if p else {}
         pref = p.preferences if p else {}
-        public = {k: app[k] for k in ["bio", "country", "color", "status", "avatar", "cover",
-                  "cosmeticAvatar", "cosmeticBanner", "cosmeticFrame", "showcase", "banReason"] if k in app}
+        public = {k: app[k] for k in ["bio", "country", "color", "avatar", "cover",
+                  "cosmeticAvatar", "cosmeticBanner", "cosmeticFrame", "showcase", "banReason", "featuredBadge"] if k in app}
         if "avatar" not in public and u.avatar:
             public["avatar"] = u.avatar.url
         if "country" not in public and u.country_code:
             public["country"] = u.country_code
+        preference = app.get("status", "online")
+        blocked = any(f["status"] == "blocked" and {f["from"], f["to"]} == {owner, uid} for f in rels)
+        status = preference if owner in connected and not blocked else "offline"
         public.update(id=owner, name=u.display_name or u.username, handle=u.username,
                       initials=(u.display_name or u.username)[:2].upper(),
                       role="admin" if u.is_staff else "player", banned=not u.is_active,
-                      level=1, status=app.get("status", "offline"))
+                      level=1, status=status)
         if not allowed(owner, "libraryPrivacy"):
             public.pop("showcase", None)
         if owner == uid:
             public.update(email=u.email, wallet=float(u.wallet_balance), points=p.points if p else 0,
-                          canManageRoles=u.is_superuser)
+                          canManageRoles=u.is_superuser, statusPreference=preference)
             state["settings"][owner] = pref
         else:
             state["settings"][owner] = {k: pref.get(k, "all") for k in
@@ -116,7 +121,7 @@ def snapshot(viewer):
         elif kind == "orderMeta" and own:
             for order in state["orders"]:
                 if order["id"] == data.get("order"):
-                    order.update({k: data[k] for k in ("method", "promo", "pointsEarned") if k in data})
+                    order.update({k: data[k] for k in ("method", "promo", "pointsEarned", "productTitle", "product") if k in data})
         elif kind == "reviewVotes":
             for review in state["reviews"]:
                 if review["id"] == data.get("review"):
@@ -163,4 +168,6 @@ def snapshot(viewer):
     state["messages"].sort(key=lambda x: (x["at"], x["id"]))
     if staff:
         state["adminStats"] = {"orders": Order.objects.count()}
+    from .feature_snapshot import extend_snapshot
+    extend_snapshot(state, viewer, allowed)
     return {"state": state, "games": catalog(viewer), "cosmetics": COSMETICS}

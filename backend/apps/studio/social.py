@@ -63,7 +63,14 @@ def social_action(user, a):
         else:
             if not friends(user, other):
                 raise PermissionDenied("Сообщения доступны только между друзьями.")
-            body = text(a.get("text"), 2000)
+            attachment = None
+            if a.get("attachment"):
+                from .models import MediaAttachment
+                from .common import identifier
+                attachment = MediaAttachment.objects.filter(pk=identifier(a["attachment"]), owner=user).first()
+                if not attachment:
+                    raise ValidationError("Загрузите своё вложение.")
+            body = text(a.get("text", ""), 2000, required=not attachment)
             from .common import identifier
             first, second = sorted([user.pk, other.pk])
             conversation, _ = Conversation.objects.get_or_create(first_id=first, second_id=second)
@@ -71,9 +78,17 @@ def social_action(user, a):
                 client_id=identifier(a["id"]) if a.get("id") else uuid.uuid4(), defaults={"text": body})
             if message.text != body:
                 raise ValidationError("Идентификатор уже используется для другого сообщения.")
+            if not created:
+                existing = Record.objects.get(pk=message_record_id(message.pk))
+                if existing.data.get("attachment") != (str(attachment.pk) if attachment else None):
+                    raise ValidationError("Идентификатор уже используется для другого вложения.")
             if created:
                 conversation.updated_at = timezone.now()
                 conversation.save(update_fields=["updated_at"])
+                if attachment:
+                    row = Record.objects.get(pk=message_record_id(message.pk))
+                    row.data["attachment"] = str(attachment.pk)
+                    save(row)
             return {"id": str(message_record_id(message.pk))}
     elif kind in ("accept", "unfriend"):
         try:

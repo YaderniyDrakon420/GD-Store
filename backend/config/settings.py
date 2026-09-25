@@ -78,7 +78,7 @@ ROOT_URLCONF = "config.urls"
 TEMPLATES = [
     {
         "BACKEND": "django.template.backends.django.DjangoTemplates",
-        "DIRS": [],
+        "DIRS": [BASE_DIR / "templates"],
         "APP_DIRS": True,
         "OPTIONS": {
             "context_processors": [
@@ -96,6 +96,7 @@ WSGI_APPLICATION = "config.wsgi.application"
 ASGI_APPLICATION = "config.asgi.application"
 
 AUTH_USER_MODEL = "accounts.User"
+AUTHENTICATION_BACKENDS = ["apps.studio.security.TwoFactorBackend"]
 
 
 # --- DATABASE ---
@@ -248,6 +249,7 @@ REST_FRAMEWORK = {
 
 
 SIMPLE_JWT = {
+    "TOKEN_REFRESH_SERIALIZER": "apps.studio.security.SecureTokenRefreshSerializer",
     "CHECK_REVOKE_TOKEN": True,
     "ACCESS_TOKEN_LIFETIME": timedelta(minutes=30),
     "REFRESH_TOKEN_LIFETIME": timedelta(days=7),
@@ -263,6 +265,11 @@ CORS_ALLOWED_ORIGINS = [
     ).split(",")
     if origin.strip()
 ]
+
+# Cookies are sent only to explicitly allowed frontend origins. Never use '*'.
+from corsheaders.defaults import default_headers
+CORS_ALLOW_CREDENTIALS = True
+CORS_ALLOW_HEADERS = (*default_headers, "idempotency-key", "x-store-user")
 
 
 # Используется существующим PaymentWebhookView.
@@ -282,12 +289,28 @@ SPECTACULAR_SETTINGS = {
 PAYMENT_TEST_MODE = os.environ.get("PAYMENT_TEST_MODE", "0") == "1"
 PRIVATE_UPLOAD_ROOT = Path(os.environ.get("PRIVATE_UPLOAD_ROOT", str(BASE_DIR / "private_uploads")))
 MAX_WORKSHOP_UPLOAD_BYTES = 10 * 1024 * 1024
+FRONTEND_URL = os.environ.get("FRONTEND_URL", "http://localhost:5173")
+EMAIL_BACKEND = os.environ.get("EMAIL_BACKEND", "django.core.mail.backends.filebased.EmailBackend" if DEBUG else "django.core.mail.backends.smtp.EmailBackend")
+EMAIL_FILE_PATH = BASE_DIR / "local_emails"
+EMAIL_HOST = os.environ.get("EMAIL_HOST", "localhost")
+EMAIL_PORT = int(os.environ.get("EMAIL_PORT", "587"))
+EMAIL_HOST_USER = os.environ.get("EMAIL_HOST_USER", "")
+EMAIL_HOST_PASSWORD = os.environ.get("EMAIL_HOST_PASSWORD", "")
+EMAIL_USE_TLS = os.environ.get("EMAIL_USE_TLS", "1") == "1"
+EMAIL_USE_SSL = os.environ.get("EMAIL_USE_SSL", "0") == "1"
+EMAIL_TIMEOUT = 10
+DEFAULT_FROM_EMAIL = os.environ.get("DEFAULT_FROM_EMAIL", "GD Store <noreply@gdstore.local>")
 DATA_UPLOAD_MAX_MEMORY_SIZE = 2 * 1024 * 1024
 SESSION_COOKIE_HTTPONLY = True
-SESSION_COOKIE_SAMESITE = "Lax"
+SESSION_COOKIE_SAMESITE = os.environ.get("SESSION_COOKIE_SAMESITE", "Lax")
+CSRF_COOKIE_SAMESITE = SESSION_COOKIE_SAMESITE
 SESSION_COOKIE_SECURE = not DEBUG
 CSRF_COOKIE_SECURE = not DEBUG
 CSRF_TRUSTED_ORIGINS = [x.strip() for x in os.environ.get("CSRF_TRUSTED_ORIGINS", "").split(",") if x.strip()]
+
+if SESSION_COOKIE_SAMESITE not in {"Lax", "Strict", "None"} or (SESSION_COOKIE_SAMESITE == "None" and DEBUG):
+    from django.core.exceptions import ImproperlyConfigured
+    raise ImproperlyConfigured("SESSION_COOKIE_SAMESITE must be Lax/Strict/None; None requires HTTPS with DJANGO_DEBUG=0.")
 
 if not DEBUG and SECRET_KEY == "dev-only-secret-change-me-before-deployment-2026":
     from django.core.exceptions import ImproperlyConfigured
