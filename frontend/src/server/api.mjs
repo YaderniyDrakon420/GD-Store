@@ -8,18 +8,18 @@ export function messageOf(data) {
 }
 
 export function createApi(fetcher = (...args) => fetch(...args), options = {}) {
-  // Берём базовый URL из переменных окружения
-  const envUrl = import.meta.env?.VITE_API_URL || import.meta.env?.VITE_API_BASE_URL || "https://gd-store-production.up.railway.app";
-  
-  // Гарантируем, что базовый путь содержит префикс /api/v1
-  const cleanEnvUrl = envUrl.trim().replace(/\/+$/, "");
-  const baseUrlWithApi = cleanEnvUrl.endsWith("/api/v1") 
-    ? cleanEnvUrl 
-    : `${cleanEnvUrl}/api/v1`;
+  // Получаем хост из переменных Vercel или дефолтный Railway
+  const rawUrl = import.meta.env?.VITE_API_URL || import.meta.env?.VITE_API_BASE_URL || "https://gd-store-production.up.railway.app";
+  const cleanUrl = rawUrl.trim().replace(/\/+$/, "");
+
+  // Формируем корректный базовый URL с обязательным / на конце
+  const baseUrlWithApi = cleanUrl.endsWith("/api/v1") 
+    ? `${cleanUrl}/` 
+    : `${cleanUrl}/api/v1/`;
 
   const baseUrl = options.baseUrl || baseUrlWithApi;
   const location = createApiLocation(baseUrl, options.origin);
-  
+
   let csrf = "";
   const uncertain = new Map();
   const pending = new Map();

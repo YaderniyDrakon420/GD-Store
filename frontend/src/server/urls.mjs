@@ -1,20 +1,29 @@
 const configuredBase = import.meta.env?.VITE_API_BASE_URL || "/api/v1/";
 
 export function createApiLocation(base = configuredBase, origin = globalThis.location?.origin || "http://localhost") {
-  const root = new URL(base.replace(/\/+$/, "") + "/", origin);
+  // Добавляем / на конец base, чтобы new URL() не срезал /api/v1
+  const normalizedBase = base.trim().endsWith("/") ? base.trim() : `${base.trim()}/`;
+  const root = new URL(normalizedBase, origin);
+
   if (!["http:", "https:"].includes(root.protocol) || root.username || root.password || root.search || root.hash)
     throw Error("VITE_API_BASE_URL должен содержать HTTP(S)-адрес API без пароля и параметров.");
+
   const crossOrigin = root.origin !== origin;
+
   return {
     crossOrigin,
     endpoint(path) {
-      const url = new URL(path, new URL("studio/", root));
+      // Формируем базовый роут для studio
+      const studioRoot = new URL("studio/", root);
+      const cleanPath = typeof path === "string" ? path.replace(/^\/+/, "") : "";
+      const url = new URL(cleanPath, studioRoot);
+
       if (url.origin !== root.origin || !url.pathname.startsWith(root.pathname))
         throw Error("Запрос за пределы настроенного API запрещён.");
+
       return crossOrigin ? url.href : url.pathname + url.search;
     },
     media(path) {
-      // Bundled /art files stay on the frontend; uploaded /media lives on Django.
       return crossOrigin && typeof path === "string" && path.startsWith("/media/")
         ? new URL(path, root).href : path;
     },
