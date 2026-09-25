@@ -8,16 +8,16 @@ export function messageOf(data) {
 }
 
 export function createApi(fetcher = (...args) => fetch(...args), options = {}) {
-  // Определяем базвый URL из Vercel Environment Variables
+  // Берём базовый URL из переменных окружения
   const envUrl = import.meta.env?.VITE_API_URL || import.meta.env?.VITE_API_BASE_URL || "https://gd-store-production.up.railway.app";
   
-  // Нормализуем URL, если в нем указан /api/v1
+  // Гарантируем, что базовый путь содержит префикс /api/v1
   const cleanEnvUrl = envUrl.trim().replace(/\/+$/, "");
-  const normalizedBaseUrl = cleanEnvUrl.endsWith("/api/v1") 
-    ? cleanEnvUrl.slice(0, -7) 
-    : cleanEnvUrl;
+  const baseUrlWithApi = cleanEnvUrl.endsWith("/api/v1") 
+    ? cleanEnvUrl 
+    : `${cleanEnvUrl}/api/v1`;
 
-  const baseUrl = options.baseUrl || normalizedBaseUrl;
+  const baseUrl = options.baseUrl || baseUrlWithApi;
   const location = createApiLocation(baseUrl, options.origin);
   
   let csrf = "";
