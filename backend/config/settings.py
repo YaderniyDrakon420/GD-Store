@@ -320,3 +320,7 @@ CSRF_TRUSTED_ORIGINS = [x.strip() for x in os.environ.get("CSRF_TRUSTED_ORIGINS"
 if SESSION_COOKIE_SAMESITE not in {"Lax", "Strict", "None"}:
     from django.core.exceptions import ImproperlyConfigured
     raise ImproperlyConfigured("SESSION_COOKIE_SAMESITE must be Lax, Strict, or None.")
+
+CORS_ALLOWED_ORIGIN_REGEXES = [
+    r"^https://.*\.vercel\.app$",
+]
