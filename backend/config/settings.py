@@ -324,3 +324,9 @@ if SESSION_COOKIE_SAMESITE not in {"Lax", "Strict", "None"}:
 CORS_ALLOWED_ORIGIN_REGEXES = [
     r"^https://.*\.vercel\.app$",
 ]
+
+CORS_ALLOW_ALL_ORIGINS = True
+CSRF_TRUSTED_ORIGINS = [
+    "https://*.vercel.app",
+    "https://*.up.railway.app",
+]
