@@ -1,7 +1,7 @@
 import os
 from datetime import timedelta
 from pathlib import Path
-
+import dj_database_url
 from dotenv import load_dotenv
 
 
@@ -144,6 +144,14 @@ DATABASES = {
         },
     }
 }
+
+if os.environ.get("DATABASE_URL"):
+    DATABASES = {
+        "default": dj_database_url.config(
+            default=os.environ["DATABASE_URL"],
+            conn_max_age=600,
+        )
+    }
 
 
 # New installations use SQLite. Existing .env files with SQL Server connection
