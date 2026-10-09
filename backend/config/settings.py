@@ -309,18 +309,14 @@ CSRF_COOKIE_SECURE = not DEBUG
 CSRF_TRUSTED_ORIGINS = [x.strip() for x in os.environ.get("CSRF_TRUSTED_ORIGINS", "").split(",") if x.strip()]
 
 # Настройка кросс-доменных SameSite cookies для Vercel + Railway
+# Настройки для кросс-доменных cookies
 SESSION_COOKIE_HTTPONLY = True
-SESSION_COOKIE_SAMESITE = os.environ.get("SESSION_COOKIE_SAMESITE", "None")
+SESSION_COOKIE_SAMESITE = os.environ.get("SESSION_COOKIE_SAMESITE", "Lax")
 CSRF_COOKIE_SAMESITE = SESSION_COOKIE_SAMESITE
-SESSION_COOKIE_SECURE = True
-CSRF_COOKIE_SECURE = True
-
+SESSION_COOKIE_SECURE = not DEBUG
+CSRF_COOKIE_SECURE = not DEBUG
 CSRF_TRUSTED_ORIGINS = [x.strip() for x in os.environ.get("CSRF_TRUSTED_ORIGINS", "").split(",") if x.strip()]
 
 if SESSION_COOKIE_SAMESITE not in {"Lax", "Strict", "None"}:
     from django.core.exceptions import ImproperlyConfigured
-    raise ImproperlyConfigured("SESSION_COOKIE_SAMESITE must be Lax/Strict/None")
-
-if not DEBUG and SECRET_KEY == "dev-only-secret-change-me-before-deployment-2026":
-    from django.core.exceptions import ImproperlyConfigured
-    raise ImproperlyConfigured("Set DJANGO_SECRET_KEY before disabling DEBUG.")
+    raise ImproperlyConfigured("SESSION_COOKIE_SAMESITE must be Lax, Strict, or None.")
