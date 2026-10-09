@@ -145,15 +145,6 @@ DATABASES = {
     }
 }
 
-if os.environ.get("DATABASE_URL"):
-    DATABASES = {
-        "default": dj_database_url.config(
-            default=os.environ["DATABASE_URL"],
-            conn_max_age=600,
-        )
-    }
-
-
 # New installations use SQLite. Existing .env files with SQL Server connection
 # fields keep their database even if they predate the DB_ENGINE setting.
 DB_ENGINE = os.environ.get("DB_ENGINE") or (
@@ -165,6 +156,16 @@ if DB_ENGINE == "sqlite":
         "NAME": os.environ.get("SQLITE_PATH", str(BASE_DIR / "db.sqlite3")),
         "OPTIONS": {"timeout": 30},
     }}
+
+# DATABASE_URL (Railway Postgres) имеет приоритет над всем выше.
+# DATABASE_URL (Railway Postgres) имеет приоритет над всем выше.
+if os.environ.get("DATABASE_URL"):
+    DATABASES = {
+        "default": dj_database_url.config(
+            default=os.environ["DATABASE_URL"],
+            conn_max_age=600,
+        )
+    }
 
 AUTH_PASSWORD_VALIDATORS = [
     {
